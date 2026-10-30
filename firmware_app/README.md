@@ -36,7 +36,7 @@ idf.py build
 idf.py -p COMx flash monitor
 ```
 
-要求 ESP-IDF **v5.5.x**（与 02 工程一致）。模型系数已经以 C 数组形式放在：
+要求 ESP-IDF **v5.4.x / v5.5.x**（02 工程用 5.5.4，本机 VSCode 插件为 5.4.4，两者均可）。模型系数已经以 C 数组形式放在：
 
 ```
 main/model/card_cls_mahjong.cpp   # 麻将 42 类，int8
