@@ -1,0 +1,20 @@
+﻿# Python 虚拟环境（不入库）
+.venv/
+.venv37/
+__pycache__/
+*.pyc
+.cache/
+
+# 数据集原始图像/裁剪图体积大，按 README 用脚本重建；仅保留 meta 标注
+datasets/det/
+datasets/det_auto/
+datasets/cls/
+datasets/_coco_poker/
+datasets/**/*.cache
+
+# 训练过程输出
+runs/
+
+# ESP-IDF 构建产物
+firmware_app/build/
+firmware_app/sdkconfig.old

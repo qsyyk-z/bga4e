@@ -1,0 +1,381 @@
+{
+  "domain": "poker",
+  "num_classes": 52,
+  "input_size": 96,
+  "mean": [
+    0.5,
+    0.5,
+    0.5
+  ],
+  "std": [
+    0.5,
+    0.5,
+    0.5
+  ],
+  "classes": [
+    {
+      "idx": 0,
+      "code": "2D",
+      "name": "2♦",
+      "rank": "2",
+      "suit": "diamond"
+    },
+    {
+      "idx": 1,
+      "code": "2H",
+      "name": "2♥",
+      "rank": "2",
+      "suit": "heart"
+    },
+    {
+      "idx": 2,
+      "code": "2S",
+      "name": "2♠",
+      "rank": "2",
+      "suit": "spade"
+    },
+    {
+      "idx": 3,
+      "code": "2C",
+      "name": "2♣",
+      "rank": "2",
+      "suit": "club"
+    },
+    {
+      "idx": 4,
+      "code": "3D",
+      "name": "3♦",
+      "rank": "3",
+      "suit": "diamond"
+    },
+    {
+      "idx": 5,
+      "code": "3H",
+      "name": "3♥",
+      "rank": "3",
+      "suit": "heart"
+    },
+    {
+      "idx": 6,
+      "code": "3S",
+      "name": "3♠",
+      "rank": "3",
+      "suit": "spade"
+    },
+    {
+      "idx": 7,
+      "code": "3C",
+      "name": "3♣",
+      "rank": "3",
+      "suit": "club"
+    },
+    {
+      "idx": 8,
+      "code": "4D",
+      "name": "4♦",
+      "rank": "4",
+      "suit": "diamond"
+    },
+    {
+      "idx": 9,
+      "code": "4H",
+      "name": "4♥",
+      "rank": "4",
+      "suit": "heart"
+    },
+    {
+      "idx": 10,
+      "code": "4S",
+      "name": "4♠",
+      "rank": "4",
+      "suit": "spade"
+    },
+    {
+      "idx": 11,
+      "code": "4C",
+      "name": "4♣",
+      "rank": "4",
+      "suit": "club"
+    },
+    {
+      "idx": 12,
+      "code": "5D",
+      "name": "5♦",
+      "rank": "5",
+      "suit": "diamond"
+    },
+    {
+      "idx": 13,
+      "code": "5H",
+      "name": "5♥",
+      "rank": "5",
+      "suit": "heart"
+    },
+    {
+      "idx": 14,
+      "code": "5S",
+      "name": "5♠",
+      "rank": "5",
+      "suit": "spade"
+    },
+    {
+      "idx": 15,
+      "code": "5C",
+      "name": "5♣",
+      "rank": "5",
+      "suit": "club"
+    },
+    {
+      "idx": 16,
+      "code": "6D",
+      "name": "6♦",
+      "rank": "6",
+      "suit": "diamond"
+    },
+    {
+      "idx": 17,
+      "code": "6H",
+      "name": "6♥",
+      "rank": "6",
+      "suit": "heart"
+    },
+    {
+      "idx": 18,
+      "code": "6S",
+      "name": "6♠",
+      "rank": "6",
+      "suit": "spade"
+    },
+    {
+      "idx": 19,
+      "code": "6C",
+      "name": "6♣",
+      "rank": "6",
+      "suit": "club"
+    },
+    {
+      "idx": 20,
+      "code": "7D",
+      "name": "7♦",
+      "rank": "7",
+      "suit": "diamond"
+    },
+    {
+      "idx": 21,
+      "code": "7H",
+      "name": "7♥",
+      "rank": "7",
+      "suit": "heart"
+    },
+    {
+      "idx": 22,
+      "code": "7S",
+      "name": "7♠",
+      "rank": "7",
+      "suit": "spade"
+    },
+    {
+      "idx": 23,
+      "code": "7C",
+      "name": "7♣",
+      "rank": "7",
+      "suit": "club"
+    },
+    {
+      "idx": 24,
+      "code": "8D",
+      "name": "8♦",
+      "rank": "8",
+      "suit": "diamond"
+    },
+    {
+      "idx": 25,
+      "code": "8H",
+      "name": "8♥",
+      "rank": "8",
+      "suit": "heart"
+    },
+    {
+      "idx": 26,
+      "code": "8S",
+      "name": "8♠",
+      "rank": "8",
+      "suit": "spade"
+    },
+    {
+      "idx": 27,
+      "code": "8C",
+      "name": "8♣",
+      "rank": "8",
+      "suit": "club"
+    },
+    {
+      "idx": 28,
+      "code": "9D",
+      "name": "9♦",
+      "rank": "9",
+      "suit": "diamond"
+    },
+    {
+      "idx": 29,
+      "code": "9H",
+      "name": "9♥",
+      "rank": "9",
+      "suit": "heart"
+    },
+    {
+      "idx": 30,
+      "code": "9S",
+      "name": "9♠",
+      "rank": "9",
+      "suit": "spade"
+    },
+    {
+      "idx": 31,
+      "code": "9C",
+      "name": "9♣",
+      "rank": "9",
+      "suit": "club"
+    },
+    {
+      "idx": 32,
+      "code": "10D",
+      "name": "10♦",
+      "rank": "10",
+      "suit": "diamond"
+    },
+    {
+      "idx": 33,
+      "code": "10H",
+      "name": "10♥",
+      "rank": "10",
+      "suit": "heart"
+    },
+    {
+      "idx": 34,
+      "code": "10S",
+      "name": "10♠",
+      "rank": "10",
+      "suit": "spade"
+    },
+    {
+      "idx": 35,
+      "code": "10C",
+      "name": "10♣",
+      "rank": "10",
+      "suit": "club"
+    },
+    {
+      "idx": 36,
+      "code": "JD",
+      "name": "J♦",
+      "rank": "J",
+      "suit": "diamond"
+    },
+    {
+      "idx": 37,
+      "code": "JH",
+      "name": "J♥",
+      "rank": "J",
+      "suit": "heart"
+    },
+    {
+      "idx": 38,
+      "code": "JS",
+      "name": "J♠",
+      "rank": "J",
+      "suit": "spade"
+    },
+    {
+      "idx": 39,
+      "code": "JC",
+      "name": "J♣",
+      "rank": "J",
+      "suit": "club"
+    },
+    {
+      "idx": 40,
+      "code": "QD",
+      "name": "Q♦",
+      "rank": "Q",
+      "suit": "diamond"
+    },
+    {
+      "idx": 41,
+      "code": "QH",
+      "name": "Q♥",
+      "rank": "Q",
+      "suit": "heart"
+    },
+    {
+      "idx": 42,
+      "code": "QS",
+      "name": "Q♠",
+      "rank": "Q",
+      "suit": "spade"
+    },
+    {
+      "idx": 43,
+      "code": "QC",
+      "name": "Q♣",
+      "rank": "Q",
+      "suit": "club"
+    },
+    {
+      "idx": 44,
+      "code": "KD",
+      "name": "K♦",
+      "rank": "K",
+      "suit": "diamond"
+    },
+    {
+      "idx": 45,
+      "code": "KH",
+      "name": "K♥",
+      "rank": "K",
+      "suit": "heart"
+    },
+    {
+      "idx": 46,
+      "code": "KS",
+      "name": "K♠",
+      "rank": "K",
+      "suit": "spade"
+    },
+    {
+      "idx": 47,
+      "code": "KC",
+      "name": "K♣",
+      "rank": "K",
+      "suit": "club"
+    },
+    {
+      "idx": 48,
+      "code": "AD",
+      "name": "A♦",
+      "rank": "A",
+      "suit": "diamond"
+    },
+    {
+      "idx": 49,
+      "code": "AH",
+      "name": "A♥",
+      "rank": "A",
+      "suit": "heart"
+    },
+    {
+      "idx": 50,
+      "code": "AS",
+      "name": "A♠",
+      "rank": "A",
+      "suit": "spade"
+    },
+    {
+      "idx": 51,
+      "code": "AC",
+      "name": "A♣",
+      "rank": "A",
+      "suit": "club"
+    }
+  ]
+}

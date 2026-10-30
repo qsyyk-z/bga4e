@@ -1,0 +1,30 @@
+{
+  "weights": "D:\\card_train\\runs\\det\\yolov8n_2cls\\weights\\best.pt",
+  "imgsz": 640,
+  "epochs": 40,
+  "metrics": {
+    "metrics/precision(B)": 0.9934418963129641,
+    "metrics/recall(B)": 0.975596048473836,
+    "metrics/mAP50(B)": 0.9865907579675441,
+    "metrics/mAP50-95(B)": 0.7931087279885572,
+    "fitness": 0.7931087279885572
+  },
+  "per_class": {
+    "mahjong_tile": {
+      "mAP50": 0.9781996318771172,
+      "mAP50-95": 0.7562349530307645
+    },
+    "poker_card": {
+      "mAP50": 0.994981884057971,
+      "mAP50-95": 0.8299825029463499
+    }
+  },
+  "speed_ms": {
+    "preprocess": 1.4483505086499755,
+    "inference": 4.168314237731619,
+    "loss": 0.002084067288659892,
+    "postprocess": 3.16159288099004
+  },
+  "onnx_320": "D:\\cardrecog\\M08\\03_Card_recognition_project\\models\\detector\\best_320.onnx",
+  "onnx_640": "D:\\cardrecog\\M08\\03_Card_recognition_project\\models\\detector\\best_640.onnx"
+}

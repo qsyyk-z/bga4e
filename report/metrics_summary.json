@@ -1,0 +1,2085 @@
+{
+  "detector": {
+    "weights": "D:\\card_train\\runs\\det\\yolov8n_2cls\\weights\\best.pt",
+    "imgsz": 640,
+    "epochs": 40,
+    "metrics": {
+      "metrics/precision(B)": 0.9934418963129641,
+      "metrics/recall(B)": 0.975596048473836,
+      "metrics/mAP50(B)": 0.9865907579675441,
+      "metrics/mAP50-95(B)": 0.7931087279885572,
+      "fitness": 0.7931087279885572
+    },
+    "per_class": {
+      "mahjong_tile": {
+        "mAP50": 0.9781996318771172,
+        "mAP50-95": 0.7562349530307645
+      },
+      "poker_card": {
+        "mAP50": 0.994981884057971,
+        "mAP50-95": 0.8299825029463499
+      }
+    },
+    "speed_ms": {
+      "preprocess": 1.4483505086499755,
+      "inference": 4.168314237731619,
+      "loss": 0.002084067288659892,
+      "postprocess": 3.16159288099004
+    },
+    "onnx_320": "D:\\cardrecog\\M08\\03_Card_recognition_project\\models\\detector\\best_320.onnx",
+    "onnx_640": "D:\\cardrecog\\M08\\03_Card_recognition_project\\models\\detector\\best_640.onnx"
+  },
+  "classifier_mahjong": {
+    "domain": "mahjong",
+    "num_classes": 42,
+    "input_size": 96,
+    "params": 328682,
+    "best_epoch": 12,
+    "best_val_top1": 0.9689271943751417,
+    "test_top1": 0.9753,
+    "test_top3": 0.9962,
+    "test_loss": 0.1944,
+    "test_samples": 2350,
+    "per_class": [
+      {
+        "idx": 0,
+        "name": "1条",
+        "support": 67,
+        "precision": 0.9848,
+        "recall": 0.9701,
+        "f1": 0.9774
+      },
+      {
+        "idx": 1,
+        "name": "1万",
+        "support": 76,
+        "precision": 1.0,
+        "recall": 0.9868,
+        "f1": 0.9934
+      },
+      {
+        "idx": 2,
+        "name": "1筒",
+        "support": 72,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      {
+        "idx": 3,
+        "name": "梅",
+        "support": 16,
+        "precision": 1.0,
+        "recall": 0.875,
+        "f1": 0.9333
+      },
+      {
+        "idx": 4,
+        "name": "春",
+        "support": 16,
+        "precision": 0.8824,
+        "recall": 0.9375,
+        "f1": 0.9091
+      },
+      {
+        "idx": 5,
+        "name": "2条",
+        "support": 58,
+        "precision": 0.9649,
+        "recall": 0.9483,
+        "f1": 0.9565
+      },
+      {
+        "idx": 6,
+        "name": "2万",
+        "support": 80,
+        "precision": 0.9753,
+        "recall": 0.9875,
+        "f1": 0.9814
+      },
+      {
+        "idx": 7,
+        "name": "2筒",
+        "support": 72,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      {
+        "idx": 8,
+        "name": "兰",
+        "support": 14,
+        "precision": 1.0,
+        "recall": 0.9286,
+        "f1": 0.963
+      },
+      {
+        "idx": 9,
+        "name": "夏",
+        "support": 18,
+        "precision": 1.0,
+        "recall": 0.9444,
+        "f1": 0.9714
+      },
+      {
+        "idx": 10,
+        "name": "3条",
+        "support": 80,
+        "precision": 1.0,
+        "recall": 0.975,
+        "f1": 0.9873
+      },
+      {
+        "idx": 11,
+        "name": "3万",
+        "support": 80,
+        "precision": 1.0,
+        "recall": 0.95,
+        "f1": 0.9744
+      },
+      {
+        "idx": 12,
+        "name": "3筒",
+        "support": 82,
+        "precision": 0.988,
+        "recall": 1.0,
+        "f1": 0.9939
+      },
+      {
+        "idx": 13,
+        "name": "菊",
+        "support": 16,
+        "precision": 0.9333,
+        "recall": 0.875,
+        "f1": 0.9032
+      },
+      {
+        "idx": 14,
+        "name": "秋",
+        "support": 10,
+        "precision": 0.6154,
+        "recall": 0.8,
+        "f1": 0.6957
+      },
+      {
+        "idx": 15,
+        "name": "4条",
+        "support": 66,
+        "precision": 0.9041,
+        "recall": 1.0,
+        "f1": 0.9496
+      },
+      {
+        "idx": 16,
+        "name": "4万",
+        "support": 76,
+        "precision": 0.987,
+        "recall": 1.0,
+        "f1": 0.9935
+      },
+      {
+        "idx": 17,
+        "name": "4筒",
+        "support": 63,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      {
+        "idx": 18,
+        "name": "竹",
+        "support": 12,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      {
+        "idx": 19,
+        "name": "冬",
+        "support": 16,
+        "precision": 0.9286,
+        "recall": 0.8125,
+        "f1": 0.8667
+      },
+      {
+        "idx": 20,
+        "name": "5条",
+        "support": 64,
+        "precision": 1.0,
+        "recall": 0.9688,
+        "f1": 0.9841
+      },
+      {
+        "idx": 21,
+        "name": "5万",
+        "support": 75,
+        "precision": 0.9855,
+        "recall": 0.9067,
+        "f1": 0.9444
+      },
+      {
+        "idx": 22,
+        "name": "5筒",
+        "support": 60,
+        "precision": 0.9365,
+        "recall": 0.9833,
+        "f1": 0.9593
+      },
+      {
+        "idx": 23,
+        "name": "6条",
+        "support": 62,
+        "precision": 0.9683,
+        "recall": 0.9839,
+        "f1": 0.976
+      },
+      {
+        "idx": 24,
+        "name": "6万",
+        "support": 74,
+        "precision": 0.961,
+        "recall": 1.0,
+        "f1": 0.9801
+      },
+      {
+        "idx": 25,
+        "name": "6筒",
+        "support": 64,
+        "precision": 0.9839,
+        "recall": 0.9531,
+        "f1": 0.9683
+      },
+      {
+        "idx": 26,
+        "name": "7条",
+        "support": 70,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      {
+        "idx": 27,
+        "name": "7万",
+        "support": 63,
+        "precision": 0.8986,
+        "recall": 0.9841,
+        "f1": 0.9394
+      },
+      {
+        "idx": 28,
+        "name": "7筒",
+        "support": 65,
+        "precision": 0.9552,
+        "recall": 0.9846,
+        "f1": 0.9697
+      },
+      {
+        "idx": 29,
+        "name": "8条",
+        "support": 51,
+        "precision": 1.0,
+        "recall": 0.9608,
+        "f1": 0.98
+      },
+      {
+        "idx": 30,
+        "name": "8万",
+        "support": 75,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      {
+        "idx": 31,
+        "name": "8筒",
+        "support": 77,
+        "precision": 0.9868,
+        "recall": 0.974,
+        "f1": 0.9804
+      },
+      {
+        "idx": 32,
+        "name": "9条",
+        "support": 63,
+        "precision": 0.9692,
+        "recall": 1.0,
+        "f1": 0.9844
+      },
+      {
+        "idx": 33,
+        "name": "9万",
+        "support": 54,
+        "precision": 0.9038,
+        "recall": 0.8704,
+        "f1": 0.8868
+      },
+      {
+        "idx": 34,
+        "name": "9筒",
+        "support": 53,
+        "precision": 1.0,
+        "recall": 0.9811,
+        "f1": 0.9905
+      },
+      {
+        "idx": 35,
+        "name": "东",
+        "support": 69,
+        "precision": 0.9583,
+        "recall": 1.0,
+        "f1": 0.9787
+      },
+      {
+        "idx": 36,
+        "name": "发",
+        "support": 51,
+        "precision": 0.9623,
+        "recall": 1.0,
+        "f1": 0.9808
+      },
+      {
+        "idx": 37,
+        "name": "北",
+        "support": 50,
+        "precision": 0.98,
+        "recall": 0.98,
+        "f1": 0.98
+      },
+      {
+        "idx": 38,
+        "name": "中",
+        "support": 37,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      {
+        "idx": 39,
+        "name": "南",
+        "support": 64,
+        "precision": 1.0,
+        "recall": 0.9375,
+        "f1": 0.9677
+      },
+      {
+        "idx": 40,
+        "name": "白",
+        "support": 64,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      {
+        "idx": 41,
+        "name": "西",
+        "support": 55,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    ],
+    "onnx_check": {
+      "argmax_match": 1,
+      "out_shape": [
+        1,
+        42
+      ]
+    },
+    "quantization": {
+      "int8_top1": 0.9745,
+      "fp32_top1_onnx": 0.9753,
+      "int8_size_kb": 360.9,
+      "fp32_size_kb": 1282.2
+    }
+  },
+  "classifier_poker": {
+    "domain": "poker",
+    "num_classes": 52,
+    "input_size": 96,
+    "params": 333812,
+    "best_epoch": 44,
+    "best_val_top1": 0.8002,
+    "test_top1": 0.7866,
+    "test_top3": 0.9638,
+    "test_loss": 0.6455,
+    "test_samples": 553,
+    "per_class": [
+      {
+        "idx": 0,
+        "name": "2♦",
+        "support": 10,
+        "precision": 0.5,
+        "recall": 0.7,
+        "f1": 0.5833
+      },
+      {
+        "idx": 1,
+        "name": "2♥",
+        "support": 11,
+        "precision": 0.6667,
+        "recall": 0.3636,
+        "f1": 0.4706
+      },
+      {
+        "idx": 2,
+        "name": "2♠",
+        "support": 10,
+        "precision": 0.6667,
+        "recall": 0.6,
+        "f1": 0.6316
+      },
+      {
+        "idx": 3,
+        "name": "2♣",
+        "support": 11,
+        "precision": 0.5833,
+        "recall": 0.6364,
+        "f1": 0.6087
+      },
+      {
+        "idx": 4,
+        "name": "3♦",
+        "support": 10,
+        "precision": 0.6364,
+        "recall": 0.7,
+        "f1": 0.6667
+      },
+      {
+        "idx": 5,
+        "name": "3♥",
+        "support": 11,
+        "precision": 0.7,
+        "recall": 0.6364,
+        "f1": 0.6667
+      },
+      {
+        "idx": 6,
+        "name": "3♠",
+        "support": 10,
+        "precision": 0.8889,
+        "recall": 0.8,
+        "f1": 0.8421
+      },
+      {
+        "idx": 7,
+        "name": "3♣",
+        "support": 12,
+        "precision": 0.8333,
+        "recall": 0.8333,
+        "f1": 0.8333
+      },
+      {
+        "idx": 8,
+        "name": "4♦",
+        "support": 10,
+        "precision": 0.5714,
+        "recall": 0.4,
+        "f1": 0.4706
+      },
+      {
+        "idx": 9,
+        "name": "4♥",
+        "support": 11,
+        "precision": 0.6154,
+        "recall": 0.7273,
+        "f1": 0.6667
+      },
+      {
+        "idx": 10,
+        "name": "4♠",
+        "support": 10,
+        "precision": 0.7,
+        "recall": 0.7,
+        "f1": 0.7
+      },
+      {
+        "idx": 11,
+        "name": "4♣",
+        "support": 12,
+        "precision": 0.9,
+        "recall": 0.75,
+        "f1": 0.8182
+      },
+      {
+        "idx": 12,
+        "name": "5♦",
+        "support": 10,
+        "precision": 0.75,
+        "recall": 0.6,
+        "f1": 0.6667
+      },
+      {
+        "idx": 13,
+        "name": "5♥",
+        "support": 11,
+        "precision": 0.6154,
+        "recall": 0.7273,
+        "f1": 0.6667
+      },
+      {
+        "idx": 14,
+        "name": "5♠",
+        "support": 10,
+        "precision": 0.9,
+        "recall": 0.9,
+        "f1": 0.9
+      },
+      {
+        "idx": 15,
+        "name": "5♣",
+        "support": 10,
+        "precision": 0.6154,
+        "recall": 0.8,
+        "f1": 0.6957
+      },
+      {
+        "idx": 16,
+        "name": "6♦",
+        "support": 10,
+        "precision": 0.6667,
+        "recall": 0.8,
+        "f1": 0.7273
+      },
+      {
+        "idx": 17,
+        "name": "6♥",
+        "support": 11,
+        "precision": 1.0,
+        "recall": 0.5455,
+        "f1": 0.7059
+      },
+      {
+        "idx": 18,
+        "name": "6♠",
+        "support": 10,
+        "precision": 1.0,
+        "recall": 0.9,
+        "f1": 0.9474
+      },
+      {
+        "idx": 19,
+        "name": "6♣",
+        "support": 11,
+        "precision": 0.6923,
+        "recall": 0.8182,
+        "f1": 0.75
+      },
+      {
+        "idx": 20,
+        "name": "7♦",
+        "support": 10,
+        "precision": 0.6667,
+        "recall": 1.0,
+        "f1": 0.8
+      },
+      {
+        "idx": 21,
+        "name": "7♥",
+        "support": 11,
+        "precision": 0.7143,
+        "recall": 0.9091,
+        "f1": 0.8
+      },
+      {
+        "idx": 22,
+        "name": "7♠",
+        "support": 10,
+        "precision": 1.0,
+        "recall": 0.8,
+        "f1": 0.8889
+      },
+      {
+        "idx": 23,
+        "name": "7♣",
+        "support": 11,
+        "precision": 0.8182,
+        "recall": 0.8182,
+        "f1": 0.8182
+      },
+      {
+        "idx": 24,
+        "name": "8♦",
+        "support": 10,
+        "precision": 1.0,
+        "recall": 0.6,
+        "f1": 0.75
+      },
+      {
+        "idx": 25,
+        "name": "8♥",
+        "support": 11,
+        "precision": 1.0,
+        "recall": 0.9091,
+        "f1": 0.9524
+      },
+      {
+        "idx": 26,
+        "name": "8♠",
+        "support": 10,
+        "precision": 0.8182,
+        "recall": 0.9,
+        "f1": 0.8571
+      },
+      {
+        "idx": 27,
+        "name": "8♣",
+        "support": 11,
+        "precision": 0.8571,
+        "recall": 0.5455,
+        "f1": 0.6667
+      },
+      {
+        "idx": 28,
+        "name": "9♦",
+        "support": 10,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      {
+        "idx": 29,
+        "name": "9♥",
+        "support": 11,
+        "precision": 0.9167,
+        "recall": 1.0,
+        "f1": 0.9565
+      },
+      {
+        "idx": 30,
+        "name": "9♠",
+        "support": 10,
+        "precision": 0.9,
+        "recall": 0.9,
+        "f1": 0.9
+      },
+      {
+        "idx": 31,
+        "name": "9♣",
+        "support": 12,
+        "precision": 0.6667,
+        "recall": 0.8333,
+        "f1": 0.7407
+      },
+      {
+        "idx": 32,
+        "name": "10♦",
+        "support": 10,
+        "precision": 0.9091,
+        "recall": 1.0,
+        "f1": 0.9524
+      },
+      {
+        "idx": 33,
+        "name": "10♥",
+        "support": 11,
+        "precision": 0.9091,
+        "recall": 0.9091,
+        "f1": 0.9091
+      },
+      {
+        "idx": 34,
+        "name": "10♠",
+        "support": 10,
+        "precision": 1.0,
+        "recall": 0.8,
+        "f1": 0.8889
+      },
+      {
+        "idx": 35,
+        "name": "10♣",
+        "support": 12,
+        "precision": 0.8,
+        "recall": 1.0,
+        "f1": 0.8889
+      },
+      {
+        "idx": 36,
+        "name": "J♦",
+        "support": 10,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      {
+        "idx": 37,
+        "name": "J♥",
+        "support": 11,
+        "precision": 0.8333,
+        "recall": 0.9091,
+        "f1": 0.8696
+      },
+      {
+        "idx": 38,
+        "name": "J♠",
+        "support": 10,
+        "precision": 0.9,
+        "recall": 0.9,
+        "f1": 0.9
+      },
+      {
+        "idx": 39,
+        "name": "J♣",
+        "support": 12,
+        "precision": 0.6667,
+        "recall": 0.8333,
+        "f1": 0.7407
+      },
+      {
+        "idx": 40,
+        "name": "Q♦",
+        "support": 10,
+        "precision": 0.8182,
+        "recall": 0.9,
+        "f1": 0.8571
+      },
+      {
+        "idx": 41,
+        "name": "Q♥",
+        "support": 11,
+        "precision": 0.9167,
+        "recall": 1.0,
+        "f1": 0.9565
+      },
+      {
+        "idx": 42,
+        "name": "Q♠",
+        "support": 10,
+        "precision": 0.6154,
+        "recall": 0.8,
+        "f1": 0.6957
+      },
+      {
+        "idx": 43,
+        "name": "Q♣",
+        "support": 12,
+        "precision": 0.8462,
+        "recall": 0.9167,
+        "f1": 0.88
+      },
+      {
+        "idx": 44,
+        "name": "K♦",
+        "support": 10,
+        "precision": 0.9,
+        "recall": 0.9,
+        "f1": 0.9
+      },
+      {
+        "idx": 45,
+        "name": "K♥",
+        "support": 11,
+        "precision": 0.7778,
+        "recall": 0.6364,
+        "f1": 0.7
+      },
+      {
+        "idx": 46,
+        "name": "K♠",
+        "support": 10,
+        "precision": 1.0,
+        "recall": 0.4,
+        "f1": 0.5714
+      },
+      {
+        "idx": 47,
+        "name": "K♣",
+        "support": 12,
+        "precision": 1.0,
+        "recall": 0.6667,
+        "f1": 0.8
+      },
+      {
+        "idx": 48,
+        "name": "A♦",
+        "support": 10,
+        "precision": 0.5556,
+        "recall": 0.5,
+        "f1": 0.5263
+      },
+      {
+        "idx": 49,
+        "name": "A♥",
+        "support": 11,
+        "precision": 0.5385,
+        "recall": 0.6364,
+        "f1": 0.5833
+      },
+      {
+        "idx": 50,
+        "name": "A♠",
+        "support": 10,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      {
+        "idx": 51,
+        "name": "A♣",
+        "support": 12,
+        "precision": 0.9231,
+        "recall": 1.0,
+        "f1": 0.96
+      }
+    ],
+    "history": [
+      {
+        "epoch": 1,
+        "train_loss": 4.0196,
+        "train_acc": 0.0215,
+        "val_loss": 4.5555,
+        "val_top1": 0.0215,
+        "val_top3": 0.055,
+        "lr": 0.002996,
+        "elapsed_s": 37.1
+      },
+      {
+        "epoch": 2,
+        "train_loss": 3.7987,
+        "train_acc": 0.0393,
+        "val_loss": 3.7074,
+        "val_top1": 0.0455,
+        "val_top3": 0.1471,
+        "lr": 0.002985,
+        "elapsed_s": 70.7
+      },
+      {
+        "epoch": 3,
+        "train_loss": 3.5212,
+        "train_acc": 0.0627,
+        "val_loss": 3.1158,
+        "val_top1": 0.0945,
+        "val_top3": 0.2751,
+        "lr": 0.002967,
+        "elapsed_s": 103.3
+      },
+      {
+        "epoch": 4,
+        "train_loss": 3.156,
+        "train_acc": 0.1204,
+        "val_loss": 2.804,
+        "val_top1": 0.1388,
+        "val_top3": 0.3816,
+        "lr": 0.002942,
+        "elapsed_s": 134.5
+      },
+      {
+        "epoch": 5,
+        "train_loss": 2.8704,
+        "train_acc": 0.1633,
+        "val_loss": 2.3104,
+        "val_top1": 0.201,
+        "val_top3": 0.494,
+        "lr": 0.00291,
+        "elapsed_s": 165.2
+      },
+      {
+        "epoch": 6,
+        "train_loss": 2.722,
+        "train_acc": 0.2002,
+        "val_loss": 2.2665,
+        "val_top1": 0.2213,
+        "val_top3": 0.5156,
+        "lr": 0.002871,
+        "elapsed_s": 196.0
+      },
+      {
+        "epoch": 7,
+        "train_loss": 2.6563,
+        "train_acc": 0.2158,
+        "val_loss": 2.1317,
+        "val_top1": 0.2488,
+        "val_top3": 0.5825,
+        "lr": 0.002825,
+        "elapsed_s": 227.5
+      },
+      {
+        "epoch": 8,
+        "train_loss": 2.5547,
+        "train_acc": 0.2439,
+        "val_loss": 1.9927,
+        "val_top1": 0.2727,
+        "val_top3": 0.6579,
+        "lr": 0.002773,
+        "elapsed_s": 258.8
+      },
+      {
+        "epoch": 9,
+        "train_loss": 2.4714,
+        "train_acc": 0.2793,
+        "val_loss": 1.9523,
+        "val_top1": 0.2883,
+        "val_top3": 0.6519,
+        "lr": 0.002714,
+        "elapsed_s": 293.7
+      },
+      {
+        "epoch": 10,
+        "train_loss": 2.4022,
+        "train_acc": 0.2961,
+        "val_loss": 1.8027,
+        "val_top1": 0.3146,
+        "val_top3": 0.7177,
+        "lr": 0.00265,
+        "elapsed_s": 330.2
+      },
+      {
+        "epoch": 11,
+        "train_loss": 2.2959,
+        "train_acc": 0.3372,
+        "val_loss": 1.7308,
+        "val_top1": 0.3744,
+        "val_top3": 0.7524,
+        "lr": 0.00258,
+        "elapsed_s": 362.5
+      },
+      {
+        "epoch": 12,
+        "train_loss": 2.2484,
+        "train_acc": 0.364,
+        "val_loss": 1.8037,
+        "val_top1": 0.3457,
+        "val_top3": 0.7201,
+        "lr": 0.002505,
+        "elapsed_s": 395.0
+      },
+      {
+        "epoch": 13,
+        "train_loss": 2.212,
+        "train_acc": 0.3696,
+        "val_loss": 1.6083,
+        "val_top1": 0.4163,
+        "val_top3": 0.7787,
+        "lr": 0.002425,
+        "elapsed_s": 427.2
+      },
+      {
+        "epoch": 14,
+        "train_loss": 2.1337,
+        "train_acc": 0.3999,
+        "val_loss": 1.5022,
+        "val_top1": 0.4545,
+        "val_top3": 0.8313,
+        "lr": 0.002341,
+        "elapsed_s": 459.6
+      },
+      {
+        "epoch": 15,
+        "train_loss": 2.0846,
+        "train_acc": 0.4246,
+        "val_loss": 1.5057,
+        "val_top1": 0.4569,
+        "val_top3": 0.8289,
+        "lr": 0.002252,
+        "elapsed_s": 490.9
+      },
+      {
+        "epoch": 16,
+        "train_loss": 2.0357,
+        "train_acc": 0.4473,
+        "val_loss": 1.4496,
+        "val_top1": 0.4689,
+        "val_top3": 0.8397,
+        "lr": 0.00216,
+        "elapsed_s": 522.5
+      },
+      {
+        "epoch": 17,
+        "train_loss": 1.9554,
+        "train_acc": 0.4773,
+        "val_loss": 1.6779,
+        "val_top1": 0.3971,
+        "val_top3": 0.7823,
+        "lr": 0.002065,
+        "elapsed_s": 553.5
+      },
+      {
+        "epoch": 18,
+        "train_loss": 1.9233,
+        "train_acc": 0.489,
+        "val_loss": 1.3557,
+        "val_top1": 0.5179,
+        "val_top3": 0.8612,
+        "lr": 0.001967,
+        "elapsed_s": 584.7
+      },
+      {
+        "epoch": 19,
+        "train_loss": 1.9103,
+        "train_acc": 0.491,
+        "val_loss": 1.2068,
+        "val_top1": 0.5909,
+        "val_top3": 0.8971,
+        "lr": 0.001867,
+        "elapsed_s": 616.1
+      },
+      {
+        "epoch": 20,
+        "train_loss": 1.8543,
+        "train_acc": 0.5298,
+        "val_loss": 1.2253,
+        "val_top1": 0.5455,
+        "val_top3": 0.9067,
+        "lr": 0.001765,
+        "elapsed_s": 646.9
+      },
+      {
+        "epoch": 21,
+        "train_loss": 1.8152,
+        "train_acc": 0.5278,
+        "val_loss": 1.2573,
+        "val_top1": 0.5586,
+        "val_top3": 0.8923,
+        "lr": 0.001661,
+        "elapsed_s": 677.5
+      },
+      {
+        "epoch": 22,
+        "train_loss": 1.7554,
+        "train_acc": 0.564,
+        "val_loss": 1.2709,
+        "val_top1": 0.5514,
+        "val_top3": 0.8828,
+        "lr": 0.001557,
+        "elapsed_s": 708.5
+      },
+      {
+        "epoch": 23,
+        "train_loss": 1.7589,
+        "train_acc": 0.5676,
+        "val_loss": 1.0043,
+        "val_top1": 0.6675,
+        "val_top3": 0.9306,
+        "lr": 0.001453,
+        "elapsed_s": 739.2
+      },
+      {
+        "epoch": 24,
+        "train_loss": 1.7151,
+        "train_acc": 0.5859,
+        "val_loss": 0.9665,
+        "val_top1": 0.6567,
+        "val_top3": 0.9378,
+        "lr": 0.001349,
+        "elapsed_s": 770.0
+      },
+      {
+        "epoch": 25,
+        "train_loss": 1.6695,
+        "train_acc": 0.6052,
+        "val_loss": 0.8936,
+        "val_top1": 0.7117,
+        "val_top3": 0.9438,
+        "lr": 0.001245,
+        "elapsed_s": 800.8
+      },
+      {
+        "epoch": 26,
+        "train_loss": 1.6321,
+        "train_acc": 0.6167,
+        "val_loss": 1.0082,
+        "val_top1": 0.6866,
+        "val_top3": 0.9246,
+        "lr": 0.001143,
+        "elapsed_s": 831.4
+      },
+      {
+        "epoch": 27,
+        "train_loss": 1.6147,
+        "train_acc": 0.6199,
+        "val_loss": 0.8368,
+        "val_top1": 0.7057,
+        "val_top3": 0.9581,
+        "lr": 0.001043,
+        "elapsed_s": 862.6
+      },
+      {
+        "epoch": 28,
+        "train_loss": 1.5983,
+        "train_acc": 0.6316,
+        "val_loss": 0.8613,
+        "val_top1": 0.7237,
+        "val_top3": 0.945,
+        "lr": 0.000945,
+        "elapsed_s": 894.0
+      },
+      {
+        "epoch": 29,
+        "train_loss": 1.5765,
+        "train_acc": 0.6467,
+        "val_loss": 0.8162,
+        "val_top1": 0.7392,
+        "val_top3": 0.9474,
+        "lr": 0.00085,
+        "elapsed_s": 925.4
+      },
+      {
+        "epoch": 30,
+        "train_loss": 1.5399,
+        "train_acc": 0.6672,
+        "val_loss": 0.7725,
+        "val_top1": 0.7297,
+        "val_top3": 0.9569,
+        "lr": 0.000758,
+        "elapsed_s": 955.8
+      },
+      {
+        "epoch": 31,
+        "train_loss": 1.5337,
+        "train_acc": 0.6655,
+        "val_loss": 0.7812,
+        "val_top1": 0.7476,
+        "val_top3": 0.9581,
+        "lr": 0.000669,
+        "elapsed_s": 986.9
+      },
+      {
+        "epoch": 32,
+        "train_loss": 1.5311,
+        "train_acc": 0.6741,
+        "val_loss": 0.7854,
+        "val_top1": 0.7596,
+        "val_top3": 0.951,
+        "lr": 0.000585,
+        "elapsed_s": 1018.4
+      },
+      {
+        "epoch": 33,
+        "train_loss": 1.5115,
+        "train_acc": 0.6758,
+        "val_loss": 0.8064,
+        "val_top1": 0.7273,
+        "val_top3": 0.951,
+        "lr": 0.000505,
+        "elapsed_s": 1050.1
+      },
+      {
+        "epoch": 34,
+        "train_loss": 1.5004,
+        "train_acc": 0.6785,
+        "val_loss": 0.7158,
+        "val_top1": 0.7847,
+        "val_top3": 0.9569,
+        "lr": 0.00043,
+        "elapsed_s": 1080.9
+      },
+      {
+        "epoch": 35,
+        "train_loss": 1.4719,
+        "train_acc": 0.6907,
+        "val_loss": 0.7346,
+        "val_top1": 0.7919,
+        "val_top3": 0.9617,
+        "lr": 0.00036,
+        "elapsed_s": 1111.8
+      },
+      {
+        "epoch": 36,
+        "train_loss": 1.4704,
+        "train_acc": 0.6963,
+        "val_loss": 0.8017,
+        "val_top1": 0.756,
+        "val_top3": 0.9498,
+        "lr": 0.000296,
+        "elapsed_s": 1142.7
+      },
+      {
+        "epoch": 37,
+        "train_loss": 1.4541,
+        "train_acc": 0.7031,
+        "val_loss": 0.7012,
+        "val_top1": 0.7919,
+        "val_top3": 0.9629,
+        "lr": 0.000237,
+        "elapsed_s": 1175.7
+      },
+      {
+        "epoch": 38,
+        "train_loss": 1.4428,
+        "train_acc": 0.7053,
+        "val_loss": 0.7283,
+        "val_top1": 0.7775,
+        "val_top3": 0.9569,
+        "lr": 0.000185,
+        "elapsed_s": 1206.7
+      },
+      {
+        "epoch": 39,
+        "train_loss": 1.4363,
+        "train_acc": 0.7087,
+        "val_loss": 0.7071,
+        "val_top1": 0.7787,
+        "val_top3": 0.9581,
+        "lr": 0.000139,
+        "elapsed_s": 1238.1
+      },
+      {
+        "epoch": 40,
+        "train_loss": 1.4315,
+        "train_acc": 0.7124,
+        "val_loss": 0.6812,
+        "val_top1": 0.7895,
+        "val_top3": 0.9593,
+        "lr": 0.0001,
+        "elapsed_s": 1278.8
+      },
+      {
+        "epoch": 41,
+        "train_loss": 1.4217,
+        "train_acc": 0.7126,
+        "val_loss": 0.6865,
+        "val_top1": 0.7943,
+        "val_top3": 0.9581,
+        "lr": 6.8e-05,
+        "elapsed_s": 1320.7
+      },
+      {
+        "epoch": 42,
+        "train_loss": 1.409,
+        "train_acc": 0.7229,
+        "val_loss": 0.6897,
+        "val_top1": 0.7978,
+        "val_top3": 0.9557,
+        "lr": 4.3e-05,
+        "elapsed_s": 1353.2
+      },
+      {
+        "epoch": 43,
+        "train_loss": 1.4129,
+        "train_acc": 0.7195,
+        "val_loss": 0.6905,
+        "val_top1": 0.7955,
+        "val_top3": 0.9605,
+        "lr": 2.5e-05,
+        "elapsed_s": 1384.9
+      },
+      {
+        "epoch": 44,
+        "train_loss": 1.3935,
+        "train_acc": 0.7339,
+        "val_loss": 0.6821,
+        "val_top1": 0.8002,
+        "val_top3": 0.9557,
+        "lr": 1.4e-05,
+        "elapsed_s": 1417.2
+      },
+      {
+        "epoch": 45,
+        "train_loss": 1.4171,
+        "train_acc": 0.7258,
+        "val_loss": 0.6924,
+        "val_top1": 0.7955,
+        "val_top3": 0.9545,
+        "lr": 1e-05,
+        "elapsed_s": 1450.8
+      }
+    ],
+    "onnx_check": {
+      "argmax_match": 1,
+      "out_shape": [
+        1,
+        52
+      ]
+    },
+    "quantization": {
+      "int8_top1": 0.7794,
+      "fp32_top1_onnx": 0.7866,
+      "int8_size_kb": 366.0,
+      "fp32_size_kb": 1302.3
+    }
+  },
+  "pipeline": {
+    "mahjong": {
+      "gt": 2350,
+      "detected": 2255,
+      "missed": 95,
+      "det_recall": 0.9596,
+      "cls_acc_matched": 0.9818,
+      "e2e_acc": 0.9421
+    },
+    "poker": {
+      "gt": 553,
+      "detected": 551,
+      "missed": 2,
+      "det_recall": 0.9964,
+      "cls_acc_matched": 0.7913,
+      "e2e_acc": 0.7884
+    },
+    "overall": {
+      "gt": 2903,
+      "e2e_correct": 2650,
+      "e2e_acc": 0.9128,
+      "det_recall": 0.9666
+    },
+    "confusion": {
+      "mahjong": {
+        "3->28": 1,
+        "37->39": 1,
+        "19->14": 3,
+        "33->27": 5,
+        "5->15": 1,
+        "21->33": 2,
+        "1->33": 1,
+        "14->19": 1,
+        "21->24": 3,
+        "25->22": 3,
+        "10->15": 1,
+        "34->25": 1,
+        "25->34": 1,
+        "32->23": 2,
+        "39->35": 2,
+        "27->33": 1,
+        "31->23": 1,
+        "20->32": 1,
+        "25->28": 1,
+        "14->4": 1,
+        "0->5": 1,
+        "21->16": 1,
+        "20->15": 1,
+        "6->11": 1,
+        "28->22": 1,
+        "8->37": 1,
+        "13->4": 1,
+        "9->8": 1
+      },
+      "poker": {
+        "10->18": 1,
+        "10->2": 2,
+        "6->7": 3,
+        "2->3": 2,
+        "10->3": 2,
+        "14->6": 1,
+        "22->26": 1,
+        "18->19": 2,
+        "22->18": 1,
+        "46->45": 1,
+        "46->38": 1,
+        "38->39": 2,
+        "34->35": 1,
+        "38->47": 1,
+        "34->31": 1,
+        "49->48": 5,
+        "9->1": 1,
+        "9->8": 2,
+        "1->0": 4,
+        "1->8": 1,
+        "13->12": 2,
+        "17->16": 4,
+        "21->20": 1,
+        "25->32": 1,
+        "21->25": 1,
+        "25->29": 1,
+        "13->17": 1,
+        "25->20": 1,
+        "29->28": 2,
+        "45->40": 3,
+        "29->24": 2,
+        "45->44": 1,
+        "33->32": 1,
+        "41->36": 1,
+        "0->1": 3,
+        "4->13": 1,
+        "8->49": 1,
+        "48->49": 5,
+        "0->5": 1,
+        "4->5": 2,
+        "8->9": 3,
+        "12->13": 4,
+        "20->21": 3,
+        "24->20": 3,
+        "24->29": 2,
+        "12->17": 1,
+        "16->21": 2,
+        "16->17": 1,
+        "24->25": 1,
+        "7->51": 2,
+        "11->3": 3,
+        "51->7": 1,
+        "7->15": 1,
+        "3->2": 1,
+        "27->31": 4,
+        "23->27": 1,
+        "23->15": 1,
+        "31->35": 3,
+        "43->39": 1,
+        "47->39": 5,
+        "39->47": 1,
+        "39->42": 1
+      }
+    },
+    "per_class": {
+      "mahjong": [
+        {
+          "idx": 0,
+          "name": "1条",
+          "gt": 67,
+          "det": 67,
+          "cls_ok": 66
+        },
+        {
+          "idx": 1,
+          "name": "1万",
+          "gt": 76,
+          "det": 75,
+          "cls_ok": 74
+        },
+        {
+          "idx": 2,
+          "name": "1筒",
+          "gt": 72,
+          "det": 70,
+          "cls_ok": 70
+        },
+        {
+          "idx": 3,
+          "name": "梅",
+          "gt": 16,
+          "det": 16,
+          "cls_ok": 15
+        },
+        {
+          "idx": 4,
+          "name": "春",
+          "gt": 16,
+          "det": 16,
+          "cls_ok": 16
+        },
+        {
+          "idx": 5,
+          "name": "2条",
+          "gt": 58,
+          "det": 53,
+          "cls_ok": 52
+        },
+        {
+          "idx": 6,
+          "name": "2万",
+          "gt": 80,
+          "det": 77,
+          "cls_ok": 76
+        },
+        {
+          "idx": 7,
+          "name": "2筒",
+          "gt": 72,
+          "det": 67,
+          "cls_ok": 67
+        },
+        {
+          "idx": 8,
+          "name": "兰",
+          "gt": 14,
+          "det": 14,
+          "cls_ok": 13
+        },
+        {
+          "idx": 9,
+          "name": "夏",
+          "gt": 18,
+          "det": 18,
+          "cls_ok": 17
+        },
+        {
+          "idx": 10,
+          "name": "3条",
+          "gt": 80,
+          "det": 77,
+          "cls_ok": 76
+        },
+        {
+          "idx": 11,
+          "name": "3万",
+          "gt": 80,
+          "det": 78,
+          "cls_ok": 78
+        },
+        {
+          "idx": 12,
+          "name": "3筒",
+          "gt": 82,
+          "det": 78,
+          "cls_ok": 78
+        },
+        {
+          "idx": 13,
+          "name": "菊",
+          "gt": 16,
+          "det": 16,
+          "cls_ok": 15
+        },
+        {
+          "idx": 14,
+          "name": "秋",
+          "gt": 10,
+          "det": 10,
+          "cls_ok": 8
+        },
+        {
+          "idx": 15,
+          "name": "4条",
+          "gt": 66,
+          "det": 65,
+          "cls_ok": 65
+        },
+        {
+          "idx": 16,
+          "name": "4万",
+          "gt": 76,
+          "det": 73,
+          "cls_ok": 73
+        },
+        {
+          "idx": 17,
+          "name": "4筒",
+          "gt": 63,
+          "det": 61,
+          "cls_ok": 61
+        },
+        {
+          "idx": 18,
+          "name": "竹",
+          "gt": 12,
+          "det": 12,
+          "cls_ok": 12
+        },
+        {
+          "idx": 19,
+          "name": "冬",
+          "gt": 16,
+          "det": 16,
+          "cls_ok": 13
+        },
+        {
+          "idx": 20,
+          "name": "5条",
+          "gt": 64,
+          "det": 62,
+          "cls_ok": 60
+        },
+        {
+          "idx": 21,
+          "name": "5万",
+          "gt": 75,
+          "det": 75,
+          "cls_ok": 69
+        },
+        {
+          "idx": 22,
+          "name": "5筒",
+          "gt": 60,
+          "det": 57,
+          "cls_ok": 57
+        },
+        {
+          "idx": 23,
+          "name": "6条",
+          "gt": 62,
+          "det": 58,
+          "cls_ok": 58
+        },
+        {
+          "idx": 24,
+          "name": "6万",
+          "gt": 74,
+          "det": 74,
+          "cls_ok": 74
+        },
+        {
+          "idx": 25,
+          "name": "6筒",
+          "gt": 64,
+          "det": 63,
+          "cls_ok": 58
+        },
+        {
+          "idx": 26,
+          "name": "7条",
+          "gt": 70,
+          "det": 64,
+          "cls_ok": 64
+        },
+        {
+          "idx": 27,
+          "name": "7万",
+          "gt": 63,
+          "det": 63,
+          "cls_ok": 62
+        },
+        {
+          "idx": 28,
+          "name": "7筒",
+          "gt": 65,
+          "det": 63,
+          "cls_ok": 62
+        },
+        {
+          "idx": 29,
+          "name": "8条",
+          "gt": 51,
+          "det": 46,
+          "cls_ok": 46
+        },
+        {
+          "idx": 30,
+          "name": "8万",
+          "gt": 75,
+          "det": 74,
+          "cls_ok": 74
+        },
+        {
+          "idx": 31,
+          "name": "8筒",
+          "gt": 77,
+          "det": 73,
+          "cls_ok": 72
+        },
+        {
+          "idx": 32,
+          "name": "9条",
+          "gt": 63,
+          "det": 63,
+          "cls_ok": 61
+        },
+        {
+          "idx": 33,
+          "name": "9万",
+          "gt": 54,
+          "det": 51,
+          "cls_ok": 46
+        },
+        {
+          "idx": 34,
+          "name": "9筒",
+          "gt": 53,
+          "det": 48,
+          "cls_ok": 47
+        },
+        {
+          "idx": 35,
+          "name": "东",
+          "gt": 69,
+          "det": 62,
+          "cls_ok": 62
+        },
+        {
+          "idx": 36,
+          "name": "发",
+          "gt": 51,
+          "det": 46,
+          "cls_ok": 46
+        },
+        {
+          "idx": 37,
+          "name": "北",
+          "gt": 50,
+          "det": 47,
+          "cls_ok": 46
+        },
+        {
+          "idx": 38,
+          "name": "中",
+          "gt": 37,
+          "det": 34,
+          "cls_ok": 34
+        },
+        {
+          "idx": 39,
+          "name": "南",
+          "gt": 64,
+          "det": 60,
+          "cls_ok": 58
+        },
+        {
+          "idx": 40,
+          "name": "白",
+          "gt": 64,
+          "det": 60,
+          "cls_ok": 60
+        },
+        {
+          "idx": 41,
+          "name": "西",
+          "gt": 55,
+          "det": 53,
+          "cls_ok": 53
+        }
+      ],
+      "poker": [
+        {
+          "idx": 0,
+          "name": "2♦",
+          "gt": 10,
+          "det": 10,
+          "cls_ok": 6
+        },
+        {
+          "idx": 1,
+          "name": "2♥",
+          "gt": 11,
+          "det": 11,
+          "cls_ok": 6
+        },
+        {
+          "idx": 2,
+          "name": "2♠",
+          "gt": 10,
+          "det": 9,
+          "cls_ok": 7
+        },
+        {
+          "idx": 3,
+          "name": "2♣",
+          "gt": 11,
+          "det": 11,
+          "cls_ok": 10
+        },
+        {
+          "idx": 4,
+          "name": "3♦",
+          "gt": 10,
+          "det": 10,
+          "cls_ok": 7
+        },
+        {
+          "idx": 5,
+          "name": "3♥",
+          "gt": 11,
+          "det": 11,
+          "cls_ok": 11
+        },
+        {
+          "idx": 6,
+          "name": "3♠",
+          "gt": 10,
+          "det": 10,
+          "cls_ok": 7
+        },
+        {
+          "idx": 7,
+          "name": "3♣",
+          "gt": 12,
+          "det": 12,
+          "cls_ok": 9
+        },
+        {
+          "idx": 8,
+          "name": "4♦",
+          "gt": 10,
+          "det": 10,
+          "cls_ok": 6
+        },
+        {
+          "idx": 9,
+          "name": "4♥",
+          "gt": 11,
+          "det": 11,
+          "cls_ok": 8
+        },
+        {
+          "idx": 10,
+          "name": "4♠",
+          "gt": 10,
+          "det": 10,
+          "cls_ok": 5
+        },
+        {
+          "idx": 11,
+          "name": "4♣",
+          "gt": 12,
+          "det": 12,
+          "cls_ok": 9
+        },
+        {
+          "idx": 12,
+          "name": "5♦",
+          "gt": 10,
+          "det": 10,
+          "cls_ok": 5
+        },
+        {
+          "idx": 13,
+          "name": "5♥",
+          "gt": 11,
+          "det": 11,
+          "cls_ok": 8
+        },
+        {
+          "idx": 14,
+          "name": "5♠",
+          "gt": 10,
+          "det": 10,
+          "cls_ok": 9
+        },
+        {
+          "idx": 15,
+          "name": "5♣",
+          "gt": 10,
+          "det": 10,
+          "cls_ok": 10
+        },
+        {
+          "idx": 16,
+          "name": "6♦",
+          "gt": 10,
+          "det": 10,
+          "cls_ok": 7
+        },
+        {
+          "idx": 17,
+          "name": "6♥",
+          "gt": 11,
+          "det": 11,
+          "cls_ok": 7
+        },
+        {
+          "idx": 18,
+          "name": "6♠",
+          "gt": 10,
+          "det": 10,
+          "cls_ok": 8
+        },
+        {
+          "idx": 19,
+          "name": "6♣",
+          "gt": 11,
+          "det": 11,
+          "cls_ok": 11
+        },
+        {
+          "idx": 20,
+          "name": "7♦",
+          "gt": 10,
+          "det": 10,
+          "cls_ok": 7
+        },
+        {
+          "idx": 21,
+          "name": "7♥",
+          "gt": 11,
+          "det": 11,
+          "cls_ok": 9
+        },
+        {
+          "idx": 22,
+          "name": "7♠",
+          "gt": 10,
+          "det": 10,
+          "cls_ok": 8
+        },
+        {
+          "idx": 23,
+          "name": "7♣",
+          "gt": 11,
+          "det": 11,
+          "cls_ok": 9
+        },
+        {
+          "idx": 24,
+          "name": "8♦",
+          "gt": 10,
+          "det": 10,
+          "cls_ok": 4
+        },
+        {
+          "idx": 25,
+          "name": "8♥",
+          "gt": 11,
+          "det": 11,
+          "cls_ok": 8
+        },
+        {
+          "idx": 26,
+          "name": "8♠",
+          "gt": 10,
+          "det": 10,
+          "cls_ok": 10
+        },
+        {
+          "idx": 27,
+          "name": "8♣",
+          "gt": 11,
+          "det": 10,
+          "cls_ok": 6
+        },
+        {
+          "idx": 28,
+          "name": "9♦",
+          "gt": 10,
+          "det": 10,
+          "cls_ok": 10
+        },
+        {
+          "idx": 29,
+          "name": "9♥",
+          "gt": 11,
+          "det": 11,
+          "cls_ok": 7
+        },
+        {
+          "idx": 30,
+          "name": "9♠",
+          "gt": 10,
+          "det": 10,
+          "cls_ok": 10
+        },
+        {
+          "idx": 31,
+          "name": "9♣",
+          "gt": 12,
+          "det": 12,
+          "cls_ok": 9
+        },
+        {
+          "idx": 32,
+          "name": "10♦",
+          "gt": 10,
+          "det": 10,
+          "cls_ok": 10
+        },
+        {
+          "idx": 33,
+          "name": "10♥",
+          "gt": 11,
+          "det": 11,
+          "cls_ok": 10
+        },
+        {
+          "idx": 34,
+          "name": "10♠",
+          "gt": 10,
+          "det": 10,
+          "cls_ok": 8
+        },
+        {
+          "idx": 35,
+          "name": "10♣",
+          "gt": 12,
+          "det": 12,
+          "cls_ok": 12
+        },
+        {
+          "idx": 36,
+          "name": "J♦",
+          "gt": 10,
+          "det": 10,
+          "cls_ok": 10
+        },
+        {
+          "idx": 37,
+          "name": "J♥",
+          "gt": 11,
+          "det": 11,
+          "cls_ok": 11
+        },
+        {
+          "idx": 38,
+          "name": "J♠",
+          "gt": 10,
+          "det": 10,
+          "cls_ok": 7
+        },
+        {
+          "idx": 39,
+          "name": "J♣",
+          "gt": 12,
+          "det": 12,
+          "cls_ok": 10
+        },
+        {
+          "idx": 40,
+          "name": "Q♦",
+          "gt": 10,
+          "det": 10,
+          "cls_ok": 10
+        },
+        {
+          "idx": 41,
+          "name": "Q♥",
+          "gt": 11,
+          "det": 11,
+          "cls_ok": 10
+        },
+        {
+          "idx": 42,
+          "name": "Q♠",
+          "gt": 10,
+          "det": 10,
+          "cls_ok": 10
+        },
+        {
+          "idx": 43,
+          "name": "Q♣",
+          "gt": 12,
+          "det": 12,
+          "cls_ok": 11
+        },
+        {
+          "idx": 44,
+          "name": "K♦",
+          "gt": 10,
+          "det": 10,
+          "cls_ok": 10
+        },
+        {
+          "idx": 45,
+          "name": "K♥",
+          "gt": 11,
+          "det": 11,
+          "cls_ok": 7
+        },
+        {
+          "idx": 46,
+          "name": "K♠",
+          "gt": 10,
+          "det": 10,
+          "cls_ok": 8
+        },
+        {
+          "idx": 47,
+          "name": "K♣",
+          "gt": 12,
+          "det": 12,
+          "cls_ok": 7
+        },
+        {
+          "idx": 48,
+          "name": "A♦",
+          "gt": 10,
+          "det": 10,
+          "cls_ok": 5
+        },
+        {
+          "idx": 49,
+          "name": "A♥",
+          "gt": 11,
+          "det": 11,
+          "cls_ok": 6
+        },
+        {
+          "idx": 50,
+          "name": "A♠",
+          "gt": 10,
+          "det": 10,
+          "cls_ok": 10
+        },
+        {
+          "idx": 51,
+          "name": "A♣",
+          "gt": 12,
+          "det": 12,
+          "cls_ok": 11
+        }
+      ]
+    }
+  },
+  "autolabel": {
+    "mahjong_recovered_images": 457,
+    "mahjong_gt_matched": 44638,
+    "mahjong_gt": 45330,
+    "mahjong_gt_missed": 692,
+    "mahjong_added": 823,
+    "poker_gt_matched": 4978,
+    "poker_gt": 4998,
+    "poker_gt_missed": 20,
+    "poker_added": 2
+  }
+}

@@ -1,0 +1,269 @@
+{
+  "domain": "mahjong",
+  "num_classes": 42,
+  "input_size": 96,
+  "mean": [
+    0.5,
+    0.5,
+    0.5
+  ],
+  "std": [
+    0.5,
+    0.5,
+    0.5
+  ],
+  "classes": [
+    {
+      "idx": 0,
+      "code": "1b",
+      "name": "1条",
+      "group": "bamboo"
+    },
+    {
+      "idx": 1,
+      "code": "1w",
+      "name": "1万",
+      "group": "character"
+    },
+    {
+      "idx": 2,
+      "code": "1p",
+      "name": "1筒",
+      "group": "circle"
+    },
+    {
+      "idx": 3,
+      "code": "plum",
+      "name": "梅",
+      "group": "flower"
+    },
+    {
+      "idx": 4,
+      "code": "spring",
+      "name": "春",
+      "group": "flower"
+    },
+    {
+      "idx": 5,
+      "code": "2b",
+      "name": "2条",
+      "group": "bamboo"
+    },
+    {
+      "idx": 6,
+      "code": "2w",
+      "name": "2万",
+      "group": "character"
+    },
+    {
+      "idx": 7,
+      "code": "2p",
+      "name": "2筒",
+      "group": "circle"
+    },
+    {
+      "idx": 8,
+      "code": "orchid",
+      "name": "兰",
+      "group": "flower"
+    },
+    {
+      "idx": 9,
+      "code": "summer",
+      "name": "夏",
+      "group": "flower"
+    },
+    {
+      "idx": 10,
+      "code": "3b",
+      "name": "3条",
+      "group": "bamboo"
+    },
+    {
+      "idx": 11,
+      "code": "3w",
+      "name": "3万",
+      "group": "character"
+    },
+    {
+      "idx": 12,
+      "code": "3p",
+      "name": "3筒",
+      "group": "circle"
+    },
+    {
+      "idx": 13,
+      "code": "chrys",
+      "name": "菊",
+      "group": "flower"
+    },
+    {
+      "idx": 14,
+      "code": "autumn",
+      "name": "秋",
+      "group": "flower"
+    },
+    {
+      "idx": 15,
+      "code": "4b",
+      "name": "4条",
+      "group": "bamboo"
+    },
+    {
+      "idx": 16,
+      "code": "4w",
+      "name": "4万",
+      "group": "character"
+    },
+    {
+      "idx": 17,
+      "code": "4p",
+      "name": "4筒",
+      "group": "circle"
+    },
+    {
+      "idx": 18,
+      "code": "bamboo",
+      "name": "竹",
+      "group": "flower"
+    },
+    {
+      "idx": 19,
+      "code": "winter",
+      "name": "冬",
+      "group": "flower"
+    },
+    {
+      "idx": 20,
+      "code": "5b",
+      "name": "5条",
+      "group": "bamboo"
+    },
+    {
+      "idx": 21,
+      "code": "5w",
+      "name": "5万",
+      "group": "character"
+    },
+    {
+      "idx": 22,
+      "code": "5p",
+      "name": "5筒",
+      "group": "circle"
+    },
+    {
+      "idx": 23,
+      "code": "6b",
+      "name": "6条",
+      "group": "bamboo"
+    },
+    {
+      "idx": 24,
+      "code": "6w",
+      "name": "6万",
+      "group": "character"
+    },
+    {
+      "idx": 25,
+      "code": "6p",
+      "name": "6筒",
+      "group": "circle"
+    },
+    {
+      "idx": 26,
+      "code": "7b",
+      "name": "7条",
+      "group": "bamboo"
+    },
+    {
+      "idx": 27,
+      "code": "7w",
+      "name": "7万",
+      "group": "character"
+    },
+    {
+      "idx": 28,
+      "code": "7p",
+      "name": "7筒",
+      "group": "circle"
+    },
+    {
+      "idx": 29,
+      "code": "8b",
+      "name": "8条",
+      "group": "bamboo"
+    },
+    {
+      "idx": 30,
+      "code": "8w",
+      "name": "8万",
+      "group": "character"
+    },
+    {
+      "idx": 31,
+      "code": "8p",
+      "name": "8筒",
+      "group": "circle"
+    },
+    {
+      "idx": 32,
+      "code": "9b",
+      "name": "9条",
+      "group": "bamboo"
+    },
+    {
+      "idx": 33,
+      "code": "9w",
+      "name": "9万",
+      "group": "character"
+    },
+    {
+      "idx": 34,
+      "code": "9p",
+      "name": "9筒",
+      "group": "circle"
+    },
+    {
+      "idx": 35,
+      "code": "east",
+      "name": "东",
+      "group": "honor"
+    },
+    {
+      "idx": 36,
+      "code": "green",
+      "name": "发",
+      "group": "honor"
+    },
+    {
+      "idx": 37,
+      "code": "north",
+      "name": "北",
+      "group": "honor"
+    },
+    {
+      "idx": 38,
+      "code": "red",
+      "name": "中",
+      "group": "honor"
+    },
+    {
+      "idx": 39,
+      "code": "south",
+      "name": "南",
+      "group": "honor"
+    },
+    {
+      "idx": 40,
+      "code": "white",
+      "name": "白",
+      "group": "honor"
+    },
+    {
+      "idx": 41,
+      "code": "west",
+      "name": "西",
+      "group": "honor"
+    }
+  ]
+}

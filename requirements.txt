@@ -1,0 +1,22 @@
+# 训练环境（Windows / RTX 4060 验证通过）
+# PyTorch 需要从 CUDA 源安装：
+#   pip install torch==2.5.1+cu121 torchvision==0.20.1+cu121 --index-url https://download.pytorch.org/whl/cu121
+torch==2.5.1+cu121
+torchvision==0.20.1+cu121
+ultralytics>=8.3
+opencv-python
+numpy
+pillow
+matplotlib
+pyyaml
+onnx
+onnxruntime
+
+# ---- ESP-DL 官方量化工具专用环境（Python 3.7）----
+# 见 firmware/README.md；单独建 .venv37：
+#   numpy==1.21.6
+#   onnx==1.9.0
+#   onnxruntime==1.7.0
+#   onnxoptimizer==0.2.6
+#   protobuf==3.20.3
+#   Pillow==9.5.0
