@@ -1,4 +1,4 @@
-﻿# Python 虚拟环境（不入库）
+# Python 虚拟环境（不入库）
 .venv/
 .venv37/
 __pycache__/
@@ -18,3 +18,6 @@ runs/
 # ESP-IDF 构建产物
 firmware_app/build/
 firmware_app/sdkconfig.old
+/build/
+/sdkconfig
+/partitions-16MiB.csv

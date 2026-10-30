@@ -1,7 +1,7 @@
 # 一键训练流程（PowerShell，在项目根目录执行）
 # 路径含中文时建议先建 ASCII 目录联接：
 #   cmd /c mklink /J D:\cardrecog "D:\大学\制造工程体验"
-#   cd D:\cardrecog\M08\03_Card_recognition_project
+#   cd D:\cardrecog\M08\bga4e
 
 $py   = ".\.venv\Scripts\python.exe"
 $py37 = ".\.venv37\Scripts\python.exe"
@@ -13,7 +13,7 @@ $py37 = ".\.venv37\Scripts\python.exe"
 & $py scripts\10_prepare_dataset.py --workers 8
 
 # 2. 训练 2 类检测器（RTX 4060 约 20 分钟）
-& $py scripts\12_train_detector.py --epochs 40 --imgsz 640 --batch 16 --workers 8 --cache ram --project D:\card_train\runs\det
+& $py scripts\12_train_detector.py --epochs 40 --imgsz 640 --batch 16 --workers 8 --cache ram --project runs\det
 
 # 3. 训练两个分类器
 & $py scripts\13_train_classifier.py --domain mahjong --epochs 35
