@@ -26,28 +26,28 @@ using namespace card_cls;
 class CardClassifierMahjong : public Model<int8_t>
 {
 private:
-    Conv2D<int8_t> stem;
-    DepthwiseConv2D<int8_t> dw0;
-    Conv2D<int8_t> pw0;
-    DepthwiseConv2D<int8_t> dw1;
-    Conv2D<int8_t> pw1;
-    DepthwiseConv2D<int8_t> dw2;
-    Conv2D<int8_t> pw2;
-    DepthwiseConv2D<int8_t> dw3;
-    Conv2D<int8_t> pw3;
-    DepthwiseConv2D<int8_t> dw4;
-    Conv2D<int8_t> pw4;
-    DepthwiseConv2D<int8_t> dw5;
-    Conv2D<int8_t> pw5;
-    DepthwiseConv2D<int8_t> dw6;
-    Conv2D<int8_t> pw6;
-    DepthwiseConv2D<int8_t> dw7;
-    Conv2D<int8_t> pw7;
-    DepthwiseConv2D<int8_t> dw8;
-    Conv2D<int8_t> pw8;
-    Conv2D<int8_t> head;
+    Conv2D<int8_t, int16_t> stem;
+    DepthwiseConv2D<int8_t, int16_t> dw0;
+    Conv2D<int8_t, int16_t> pw0;
+    DepthwiseConv2D<int8_t, int16_t> dw1;
+    Conv2D<int8_t, int16_t> pw1;
+    DepthwiseConv2D<int8_t, int16_t> dw2;
+    Conv2D<int8_t, int16_t> pw2;
+    DepthwiseConv2D<int8_t, int16_t> dw3;
+    Conv2D<int8_t, int16_t> pw3;
+    DepthwiseConv2D<int8_t, int16_t> dw4;
+    Conv2D<int8_t, int16_t> pw4;
+    DepthwiseConv2D<int8_t, int16_t> dw5;
+    Conv2D<int8_t, int16_t> pw5;
+    DepthwiseConv2D<int8_t, int16_t> dw6;
+    Conv2D<int8_t, int16_t> pw6;
+    DepthwiseConv2D<int8_t, int16_t> dw7;
+    Conv2D<int8_t, int16_t> pw7;
+    DepthwiseConv2D<int8_t, int16_t> dw8;
+    Conv2D<int8_t, int16_t> pw8;
+    Conv2D<int8_t, int16_t> head;
     GlobalAveragePool2D<int8_t> gap;
-    FullyConnected<int8_t> fc;
+    FullyConnected<int8_t, int16_t> fc;
 
 public:
     int8_t *get_output() { return this->fc.get_output().get_element_ptr(); }
