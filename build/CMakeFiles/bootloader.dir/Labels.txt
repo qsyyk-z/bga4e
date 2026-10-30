@@ -1,0 +1,13 @@
+# Target labels
+ bootloader
+# Source files and their labels
+D:/M08/bga4e/build/CMakeFiles/bootloader
+D:/M08/bga4e/build/CMakeFiles/bootloader.rule
+D:/M08/bga4e/build/CMakeFiles/bootloader-complete.rule
+D:/M08/bga4e/build/bootloader-prefix/src/bootloader-stamp/bootloader-build.rule
+D:/M08/bga4e/build/bootloader-prefix/src/bootloader-stamp/bootloader-configure.rule
+D:/M08/bga4e/build/bootloader-prefix/src/bootloader-stamp/bootloader-download.rule
+D:/M08/bga4e/build/bootloader-prefix/src/bootloader-stamp/bootloader-install.rule
+D:/M08/bga4e/build/bootloader-prefix/src/bootloader-stamp/bootloader-mkdir.rule
+D:/M08/bga4e/build/bootloader-prefix/src/bootloader-stamp/bootloader-patch.rule
+D:/M08/bga4e/build/bootloader-prefix/src/bootloader-stamp/bootloader-update.rule

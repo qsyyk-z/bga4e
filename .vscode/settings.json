@@ -1,0 +1,5 @@
+{
+    "cmake.sourceDirectory": "D:/M08/bga4e/firmware_app",
+    "idf.flashType": "UART",
+    "idf.portWin": "COM8"
+}
