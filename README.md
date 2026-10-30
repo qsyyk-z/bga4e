@@ -288,7 +288,7 @@ py -3.10 -m venv .venv
 .\.venv\Scripts\python.exe scripts\10_prepare_dataset.py --workers 8
 
 # 2) 训练检测器（约 30–50 分钟，RTX 4060）
-.\.venv\Scripts\python.exe scripts\12_train_detector.py --epochs 40 --imgsz 640 --batch 16 --workers 8 --cache ram --project D:\card_train\runs\det
+.\.venv\Scripts\python.exe scripts\12_train_detector.py --epochs 40 --imgsz 640 --batch 16 --workers 8 --cache ram --project runs\det
 
 # 3) 训练分类器
 .\.venv\Scripts\python.exe scripts\13_train_classifier.py --domain mahjong --epochs 35
