@@ -3,6 +3,7 @@
 #include "card_classifier_mahjong.hpp"
 #include "card_classifier_poker.hpp"
 #include "card_labels.hpp"
+#include "dl_define.hpp"
 #include "dl_image.hpp"
 #include "fb_gfx.h"
 
