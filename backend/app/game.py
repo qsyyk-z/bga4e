@@ -218,6 +218,11 @@ def apply_event(state: dict, event: dict) -> dict:
             "tiles": meld_tiles,
             "from": last["player"] if last else None,
         })
+        # 被吃/碰/杠的牌从对方弃牌河移走
+        if last:
+            dp = state["players"][last["player"]]
+            if tile in dp.get("discards", []):
+                dp["discards"].remove(tile)
         state["last_discard"] = None
         state["current_player"] = player
 
