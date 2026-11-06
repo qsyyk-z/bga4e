@@ -198,6 +198,10 @@ static void card_ai_task(void *arg)
         }
         float conf = 1.0f / sum;
 
+        /* 串口桥接用：每帧输出一行 JSON，PC 端 tools/serial_bridge.py 读取后上报后端 */
+        ESP_LOGI("CARD_RESULT", "{\"mode\":\"%s\",\"tile\":\"%s\",\"conf\":%.3f}",
+                 s_mode ? "poker" : "mahjong", names[best], conf);
+
         int side = (width < height ? width : height) * 4 / 5;
         int x0 = (width - side) / 2;
         int y0 = (height - side) / 2;
