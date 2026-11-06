@@ -215,10 +215,20 @@ std::string ComposeState(const std::string& response) {
 }
 
 std::vector<std::string> SplitTiles(const std::string& raw) {
+    // 先把中文分隔符替换成 ASCII 逗号，避免逐字节比较 UTF-8 字符
+    std::string normalized = raw;
+    for (const auto* sep : {"，", "、", "；"}) {
+        size_t pos = 0;
+        while ((pos = normalized.find(sep, pos)) != std::string::npos) {
+            normalized.replace(pos, std::string(sep).size(), ",");
+            pos += 1;
+        }
+    }
+
     std::vector<std::string> tiles;
     std::string current;
-    for (char ch : raw) {
-        if (ch == ',' || ch == '，' || ch == '、' || ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r') {
+    for (char ch : normalized) {
+        if (ch == ',' || ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r') {
             if (!current.empty()) {
                 tiles.push_back(current);
                 current.clear();

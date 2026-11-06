@@ -1,6 +1,14 @@
-# 小智（xiaozhi-esp32）接入
+# 小智（AiXiaoZhi_Hiwonder_Sensor）接入
 
 把 BGA4E 后端作为“麻将牌局工具”挂到小智的 MCP 上。小智负责唤醒、ASR、LLM 对话和 TTS；BGA4E 后端负责牌局状态、向听/进张和策略。
+
+适用工程：
+
+```text
+D:\M08\AiXiaoZhi_Hiwonder_Sensor
+```
+
+这是 Hiwonder 传感器板的小智工程（`PROJECT_VER 1.8.9`），`main/idf_component.yml` 要求 **ESP-IDF >= 5.4.0**，可直接用 5.4.4 编译。
 
 ## 1. 架构
 
@@ -30,42 +38,43 @@ main/boards/common/mahjong_mcp.cc
 main/boards/common/mahjong_mcp.h
 ```
 
-复制到 xiaozhi 工程同路径：
+复制到：
 
 ```text
-xiaozhi-esp32-2.2.4/main/boards/common/mahjong_mcp.cc
-xiaozhi-esp32-2.2.4/main/boards/common/mahjong_mcp.h
+D:\M08\AiXiaoZhi_Hiwonder_Sensor\main\boards\common\mahjong_mcp.cc
+D:\M08\AiXiaoZhi_Hiwonder_Sensor\main\boards\common\mahjong_mcp.h
 ```
 
-## 3. 修改 `main/CMakeLists.txt`
-
-在 `boards/common/...` 的 `SOURCES` 列表中加入：
+这个工程的 `main/CMakeLists.txt` 已经用：
 
 ```cmake
-    "boards/common/knob.cc"
-    "boards/common/mahjong_mcp.cc"      # 新增
-    "boards/common/power_save_timer.cc"
+file(GLOB BOARD_COMMON_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/boards/common/*.cc)
 ```
 
-## 4. 修改 `main/application.cc`
+自动收集 `boards/common/*.cc`，所以**不需要改 CMakeLists**。
+
+## 3. 修改 `main/application.cc`
 
 顶部 include：
 
 ```cpp
 #include "mcp_server.h"
 #include "mahjong_mcp.h"   // 新增
-#include "assets.h"
 ```
 
-在 `Application::Initialize()` 中：
+在 `Application::Initialize()` 末尾的：
 
 ```cpp
-    mcp_server.AddCommonTools();
-    mcp_server.AddUserOnlyTools();
+    McpServer::GetInstance().AddCommonTools();
+```
+
+后面加：
+
+```cpp
     AddMahjongMcpTools();   // 新增
 ```
 
-## 5. 修改 `main/Kconfig.projbuild`
+## 4. 修改 `main/Kconfig.projbuild`
 
 在文件末尾追加：
 
@@ -91,16 +100,31 @@ idf.py menuconfig
 #   BGA4E_PLAYER      = 0..3
 ```
 
-## 6. 编译
-
-xiaozhi-esp32 2.2.4 的 `main/idf_component.yml` 要求 **ESP-IDF >= 5.5.2**；本机如果只有 5.4.4，需要先安装 5.5.x。
+## 5. 编译
 
 ```bash
+cd D:\M08\AiXiaoZhi_Hiwonder_Sensor
 idf.py build
 idf.py -p COMx flash monitor
 ```
 
-## 7. 后端准备
+> 已在 **ESP-IDF 5.4.4** 上实测编译通过：`AiXiaoZhi_Hiwonder.bin` 大小 `0x3bf530`，app 分区剩余 38%。
+
+工程当前的 `sdkconfig` 已经是：
+
+```text
+CONFIG_IDF_TARGET="esp32s3"
+CONFIG_BOARD_TYPE_HiwonderExploit_S3=y
+```
+
+如果之前用别的 IDF 版本配置过 `build/`，先：
+
+```bash
+idf.py fullclean
+idf.py build
+```
+
+## 6. 后端准备
 
 在 PC 上启动 BGA4E：
 
@@ -117,7 +141,7 @@ cd M08\bga4e\backend
 - Windows 防火墙放行 8000；
 - `BGA4E_BACKEND_URL` 用 PC 的局域网 IP，不要用 `127.0.0.1`。
 
-## 8. 可以这样说
+## 7. 可以这样说
 
 | 用户说法 | 小智调用的工具 |
 | --- | --- |
@@ -133,7 +157,7 @@ cd M08\bga4e\backend
 东 EA、南 SO、西 WE、北 NO、中 CE、发 GR、白 WH
 ```
 
-## 9. 工具返回示例
+## 8. 工具返回示例
 
 `get_advice` 返回类似：
 
@@ -143,7 +167,7 @@ cd M08\bga4e\backend
 
 小智的 LLM 可以继续用更口语的方式播报。
 
-## 10. 注意
+## 9. 注意
 
 - 工具通过 `Board::GetInstance().GetNetwork()->CreateHttp()` 访问后端，需要设备已经联网；
 - 单次 HTTP 超时 10 秒，失败时返回“暂时连不上牌局服务”，不会让小智卡死；

@@ -51,7 +51,7 @@ cd M08\bga4e\backend
 
 打开 <http://127.0.0.1:8000>，点右上角“生成演示牌局”即可看到完整牌桌、事件流、复盘和策略建议。详细说明见 [`backend/README.md`](backend/README.md)。
 
-设备端如果使用小智（xiaozhi-esp32）做语音/LLM，按 [`xiaozhi/README.md`](xiaozhi/README.md) 把 `mahjong_mcp.cc` 拷进去；小智会通过 MCP 工具调用后端的 `get_state/get_advice/set_hand/record_discard`，由小智的 LLM 负责说话、后端负责算牌。
+设备端如果使用小智（`AiXiaoZhi_Hiwonder_Sensor`，xiaoZhi 1.8.9，ESP-IDF 5.4.4 可编译）做语音/LLM，按 [`xiaozhi/README.md`](xiaozhi/README.md) 把 `mahjong_mcp.cc` 拷进去；小智会通过 MCP 工具调用后端的 `get_state/get_advice/set_hand/record_discard`，由小智的 LLM 负责说话、后端负责算牌。
 
 ---
 

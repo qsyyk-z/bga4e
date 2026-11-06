@@ -250,7 +250,7 @@ BGA4E_PLAYER       = 0..3
 
 小智的云端 LLM 会看到这些工具的说明，并决定何时调用；工具返回中文文本，TTS 直接播报。
 
-> xiaozhi-esp32 2.2.4 的 `idf_component.yml` 要求 ESP-IDF >= 5.5.2；如果本机只有 5.4，需要安装 5.5.x 或调整该要求后再编译。
+> 当前适配的是 `AiXiaoZhi_Hiwonder_Sensor`（xiaoZhi 1.8.9，`main/idf_component.yml` 要求 ESP-IDF >= 5.4.0）。已在 ESP-IDF 5.4.4 上实测编译通过，bin 大小 `0x3bf530`，app 分区剩余 38%。
 
 ## 10. 设计说明与限制
 
