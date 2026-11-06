@@ -162,6 +162,10 @@ $env:LLM_MODEL="deepseek-chat"
 | POST | `/api/games/{id}/undo` | 撤销最后一条事件 |
 | GET | `/api/games/{id}/replay` | 复盘快照 |
 | GET | `/api/games/{id}/hand/{player}` | 单人手牌分析 |
+| GET | `/api/current/summary` | 最近一局的精简状态（小智用） |
+| POST | `/api/current/advice` | 最近一局的策略建议 |
+| POST | `/api/current/hands/{player}` | 最近一局录入手牌 |
+| POST | `/api/current/events` | 最近一局追加事件 |
 | WS | `/ws/games/{id}` | 实时状态推送 |
 
 交互式文档：<http://127.0.0.1:8000/docs>
@@ -202,7 +206,53 @@ backend/
 
 当前覆盖：牌编码解析、向听/七对/十三幺、最佳出牌、创建牌局、摸打、撤销、复盘、识别上报、手动录入手牌、演示牌局、LLM 降级。
 
-## 9. 设计说明与限制
+## 9. 小智语音 / LLM 接入
+
+如果设备端使用 [xiaozhi-esp32](https://github.com/78/xiaozhi-esp32) 做语音交互，可以把本后端作为“牌局工具”挂到小智的 MCP 上：小智负责唤醒、ASR、LLM 对话和 TTS，后端只负责牌局状态、向听/进张和策略。
+
+### 9.1 后端提供的“当前牌局”接口
+
+小智设备不需要知道每局 ID，直接访问：
+
+```text
+GET  /api/current/summary?player=0     # 我的手牌、各家弃牌、牌墙、最近出牌
+POST /api/current/advice               # {"player":0,"use_llm":false}
+POST /api/current/hands/0              # {"tiles":["1W","2W","3W"]}
+POST /api/current/events               # 记录出牌等事件
+```
+
+`use_llm=false` 时只走向听/进张规则，由小智的 LLM 负责把结果说成自然语言，避免重复调用大模型。
+
+### 9.2 小智端 MCP 工具
+
+在 xiaozhi 工程里新增了 `main/boards/common/mahjong_mcp.cc`，注册：
+
+| 工具 | 作用 |
+| --- | --- |
+| `self.mahjong.get_state` | 获取当前牌局摘要 |
+| `self.mahjong.get_advice` | 获取“打哪张/理由/向听” |
+| `self.mahjong.set_hand` | 语音报手牌后录入 |
+| `self.mahjong.record_discard` | 手动记录打出的牌 |
+
+配置（`idf.py menuconfig` → `BGA4E Mahjong Assistant`）：
+
+```text
+BGA4E_BACKEND_URL  = http://<PC 局域网 IP>:8000
+BGA4E_PLAYER       = 0..3
+```
+
+之后对小智说：
+
+- “现在牌局怎么样？” → 调用 `get_state`
+- “我该打哪张？” → 调用 `get_advice`
+- “我的手牌是一万、二万、三万……” → 调用 `set_hand`
+- “记一下，我打三万” → 调用 `record_discard`
+
+小智的云端 LLM 会看到这些工具的说明，并决定何时调用；工具返回中文文本，TTS 直接播报。
+
+> xiaozhi-esp32 2.2.4 的 `idf_component.yml` 要求 ESP-IDF >= 5.5.2；如果本机只有 5.4，需要安装 5.5.x 或调整该要求后再编译。
+
+## 10. 设计说明与限制
 
 - **事件溯源**：`events` 是唯一事实来源，`games.state_json` 只是快照；撤销/复盘都能从 `initial_json + events` 重建。
 - **观察者模式**：`strict_hands=false`、`strict_turn=false` 时允许只记录桌面弃牌；手牌为空时建议接口会明确提示“先录入手牌”，不会编造。

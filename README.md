@@ -51,6 +51,8 @@ cd M08\bga4e\backend
 
 打开 <http://127.0.0.1:8000>，点右上角“生成演示牌局”即可看到完整牌桌、事件流、复盘和策略建议。详细说明见 [`backend/README.md`](backend/README.md)。
 
+设备端如果使用小智（xiaozhi-esp32）做语音/LLM，按 [`xiaozhi/README.md`](xiaozhi/README.md) 把 `mahjong_mcp.cc` 拷进去；小智会通过 MCP 工具调用后端的 `get_state/get_advice/set_hand/record_discard`，由小智的 LLM 负责说话、后端负责算牌。
+
 ---
 
 ## 1. 与 02_Face_recognition_project 的关系
@@ -110,7 +112,10 @@ bga4e/
 │   ├── app/                       # FastAPI + SQLite + 麻将状态机 + 向听/LLM
 │   ├── static/                    # 无构建依赖的网页牌桌
 │   ├── tools/serial_bridge.py     # ESP32 串口识别结果 -> 后端
-│   └── tests/                     # pytest（14 项）
+│   └── tests/                     # pytest（15 项）
+├── xiaozhi/                       # 小智 ESP32 MCP 接入（语音/LLM 策略）
+│   ├── README.md                  # 拷贝、Kconfig、menuconfig、编译步骤
+│   └── main/boards/common/        # mahjong_mcp.cc/.h
 ├── firmware_app/                  # 完整 ESP-IDF 工程（可直接 idf.py build/flash）
 │   ├── README.md                  # 烧录/按键/标签说明
 │   ├── main/APP/esp_card_recognition.cpp
