@@ -37,6 +37,20 @@ idf.py -p COMx flash monitor
 
 > 数据集图像不随仓库分发，`datasets/` 只保留 `meta/`；需要复现训练时按第 3、5 节脚本从原始 `扑克/麻将` 目录重建。
 
+## 0.2 牌局后端与 LLM 助手
+
+`backend/` 对应开题报告「算法和工程部分」的第 2、4 项：
+
+- **第 2 项**：牌局状态后端、实时展示、复盘，并与 ESP32 识别结果连接；
+- **第 4 项**：接入 LLM，基于当前牌局给出打牌建议（无 API Key 时自动使用本地向听/进张规则）。
+
+```powershell
+cd M08\bga4e\backend
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+打开 <http://127.0.0.1:8000>，点右上角“生成演示牌局”即可看到完整牌桌、事件流、复盘和策略建议。详细说明见 [`backend/README.md`](backend/README.md)。
+
 ---
 
 ## 1. 与 02_Face_recognition_project 的关系
@@ -91,6 +105,12 @@ bga4e/
 │   ├── cardtools.py               # 推理/评估共用函数
 │   └── run_all.ps1                # 一键流程
 ├── datasets/meta/                 # 类别映射、清洗标注（det/cls 图像不入库，脚本重建）
+├── backend/                       # 牌局记录 / 展示 / 复盘 / LLM 策略后端
+│   ├── README.md                  # 启动、API、识别接入、LLM 配置
+│   ├── app/                       # FastAPI + SQLite + 麻将状态机 + 向听/LLM
+│   ├── static/                    # 无构建依赖的网页牌桌
+│   ├── tools/serial_bridge.py     # ESP32 串口识别结果 -> 后端
+│   └── tests/                     # pytest（14 项）
 ├── firmware_app/                  # 完整 ESP-IDF 工程（可直接 idf.py build/flash）
 │   ├── README.md                  # 烧录/按键/标签说明
 │   ├── main/APP/esp_card_recognition.cpp

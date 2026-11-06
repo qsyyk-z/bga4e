@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BGA4E · 麻将牌局助手</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">BGA4E</span>
+    <span class="sub">麻将牌局助手 · 记牌 · 复盘 · 策略</span>
+  </div>
+  <div class="top-actions">
+    <span id="llmBadge" class="badge">检测中…</span>
+    <button id="btnDemo" class="btn ghost">生成演示牌局</button>
+  </div>
+</header>
+
+<main class="layout">
+  <aside class="sidebar">
+    <section class="panel">
+      <div class="panel-title">
+        <h2>牌局</h2>
+        <button id="btnNew" class="btn small">新建</button>
+      </div>
+      <div id="gameList" class="game-list"></div>
+      <form id="createForm" class="form" hidden>
+        <label>牌局名称<input id="newName" placeholder="例如：周四下午局"></label>
+        <label>东家<input id="p0" value="东家"></label>
+        <label>南家<input id="p1" value="南家"></label>
+        <label>西家<input id="p2" value="西家"></label>
+        <label>北家<input id="p3" value="北家"></label>
+        <label>庄家
+          <select id="dealer">
+            <option value="0">东家</option><option value="1">南家</option>
+            <option value="2">西家</option><option value="3">北家</option>
+          </select>
+        </label>
+        <label class="check"><input type="checkbox" id="deal" checked> 自动发牌（演示）</label>
+        <label class="check"><input type="checkbox" id="strictHands" checked> 严格校验手牌</label>
+        <label class="check"><input type="checkbox" id="strictTurn" checked> 严格轮次</label>
+        <div class="row">
+          <button type="submit" class="btn">创建</button>
+          <button type="button" id="btnCancelNew" class="btn ghost">取消</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>识别接入</h2>
+      <p class="hint">ESP32 通过串口桥接或 HTTP 上报；选择玩家后扫描牌面。</p>
+      <label>玩家
+        <select id="playerSelect">
+          <option value="0">0 · 东家</option><option value="1">1 · 南家</option>
+          <option value="2">2 · 西家</option><option value="3">3 · 北家</option>
+        </select>
+      </label>
+      <label>识别到的牌<input id="tileInput" list="tileList" placeholder="3W / 5B / EA"></label>
+      <label>置信度<input id="confidenceInput" type="number" min="0" max="1" step="0.01" value="0.90"></label>
+      <div id="top3Box" class="top3"><span class="hint">识别后显示 top-3</span></div>
+      <div class="row">
+        <button id="btnScan" class="btn">记录识别</button>
+        <button id="btnDiscard" class="btn accent">作为出牌</button>
+      </div>
+      <label>手动录入手牌（空格/逗号分隔）<textarea id="handInput" rows="2" placeholder="1W 2W 3W 4B 5B EA"></textarea></label>
+      <button id="btnHand" class="btn ghost">保存手牌</button>
+    </section>
+  </aside>
+
+  <section class="main">
+    <div class="gamebar">
+      <div>
+        <h1 id="gameTitle">未选择牌局</h1>
+        <div id="gameMeta" class="meta">从左侧选择牌局，或生成一个演示牌局</div>
+      </div>
+      <div class="row">
+        <label class="check"><input type="checkbox" id="revealAll"> 显示所有手牌</label>
+        <button id="btnReplay" class="btn ghost">复盘</button>
+      </div>
+    </div>
+
+    <div id="board" class="board">
+      <div class="empty-state">还没有牌局。点击右上角“生成演示牌局”或左侧“新建”。</div>
+    </div>
+
+    <section class="panel">
+      <div class="panel-title"><h2>事件记录</h2><span id="eventCount" class="meta"></span></div>
+      <div id="eventLog" class="event-log"></div>
+    </section>
+  </section>
+
+  <aside class="side">
+    <section class="panel">
+      <h2>操作</h2>
+      <div id="actionButtons" class="action-grid"></div>
+      <div class="row">
+        <button id="btnAdvice" class="btn accent">给出建议</button>
+        <button id="btnUndo" class="btn ghost">撤销一步</button>
+      </div>
+    </section>
+
+    <section class="panel advice">
+      <div class="panel-title"><h2>策略建议</h2><span id="adviceProvider" class="badge"></span></div>
+      <div id="adviceBox" class="advice-box">
+        <p class="hint">点击“给出建议”，或先录入手牌。</p>
+      </div>
+      <button id="btnSpeak" class="btn ghost">语音播报</button>
+    </section>
+  </aside>
+</main>
+
+<div id="replayModal" class="modal" hidden>
+  <div class="modal-card">
+    <div class="panel-title">
+      <h2>牌局复盘</h2>
+      <button id="btnCloseReplay" class="btn ghost small">关闭</button>
+    </div>
+    <div id="replayBoard" class="board replay-board"></div>
+    <div class="replay-controls">
+      <button id="btnReplayPrev" class="btn small">上一步</button>
+      <button id="btnReplayPlay" class="btn small accent">播放</button>
+      <button id="btnReplayNext" class="btn small">下一步</button>
+      <input id="replaySlider" type="range" min="0" max="0" value="0">
+      <span id="replayLabel" class="meta">开局</span>
+    </div>
+  </div>
+</div>
+
+<datalist id="tileList"></datalist>
+<script src="/static/app.js"></script>
+</body>
+</html>

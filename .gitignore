@@ -21,3 +21,15 @@ firmware_app/sdkconfig.old
 /build/
 /sdkconfig
 /partitions-16MiB.csv
+
+# 牌局后端
+backend/.venv/
+backend/.pytest_cache/
+backend/.edge-profile*/
+backend/.chrome-profile*/
+backend/data/*.db
+backend/data/*.db-*
+backend/ui*.png
+backend/dom.html
+backend/demo_resp.json
+backend/build_out*.txt
