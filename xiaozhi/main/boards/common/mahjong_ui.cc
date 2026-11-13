@@ -342,6 +342,12 @@ private:
     // UART0 是 CH343 的 console UART。PC 端只发 BGA4E 前缀的 JSON 行，
     // 其他日志/普通输入全部忽略。
     void SerialTask() {
+        // Console UART0 可能已经装过驱动；未装时补装，保证 uart_read_bytes 可用。
+        esp_err_t err = uart_driver_install(UART_NUM_0, 4096, 0, 0, nullptr, 0);
+        if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
+            ESP_LOGW(TAG, "uart driver install failed: %s", esp_err_to_name(err));
+        }
+
         std::string buffer;
         uint8_t chunk[256];
         while (true) {
