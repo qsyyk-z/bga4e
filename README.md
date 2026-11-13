@@ -53,6 +53,8 @@ cd M08\bga4e\backend
 
 设备端如果使用小智（`AiXiaoZhi_Hiwonder_Sensor`，xiaoZhi 1.8.9，ESP-IDF 5.4.4 可编译）做语音/LLM，按 [`xiaozhi/README.md`](xiaozhi/README.md) 把 `mahjong_mcp.cc` 拷进去；小智会通过 MCP 工具调用后端的 `get_state/get_advice/set_hand/record_discard`，由小智的 LLM 负责说话、后端负责算牌。
 
+另外已适配 **ESP32-S3-Touch-LCD-4.3C（800×480）**：新增板级 RGB 屏/GT911 触摸/CH32V003 IO 扩展代码和 `mahjong_ui.cc` LVGL 界面，把当前牌局、四家弃牌、手牌和策略建议直接显示在开发板上。用 ESP-IDF 5.4.4 实测编译通过，bin `0x5dcdd0`，7M app 分区剩余 16%。
+
 ---
 
 ## 1. 与 02_Face_recognition_project 的关系
@@ -113,9 +115,11 @@ bga4e/
 │   ├── static/                    # 无构建依赖的网页牌桌
 │   ├── tools/serial_bridge.py     # ESP32 串口识别结果 -> 后端
 │   └── tests/                     # pytest（15 项）
-├── xiaozhi/                       # 小智 ESP32 MCP 接入（语音/LLM 策略）
-│   ├── README.md                  # 拷贝、Kconfig、menuconfig、编译步骤
-│   └── main/boards/common/        # mahjong_mcp.cc/.h
+├── xiaozhi/                       # 小智 ESP32 MCP + 4.3C LVGL 界面
+│   ├── README.md                  # 拷贝、Kconfig、分区表、编译步骤
+│   ├── main/boards/common/        # mahjong_mcp.cc / mahjong_ui.cc
+│   ├── main/boards/waveshare-s3-touch-lcd-4.3c/
+│   └── components/custom_io_expander_ch32v003/
 ├── firmware_app/                  # 完整 ESP-IDF 工程（可直接 idf.py build/flash）
 │   ├── README.md                  # 烧录/按键/标签说明
 │   ├── main/APP/esp_card_recognition.cpp

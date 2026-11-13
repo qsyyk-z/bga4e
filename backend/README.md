@@ -250,7 +250,7 @@ BGA4E_PLAYER       = 0..3
 
 小智的云端 LLM 会看到这些工具的说明，并决定何时调用；工具返回中文文本，TTS 直接播报。
 
-> 当前适配的是 `AiXiaoZhi_Hiwonder_Sensor`（xiaoZhi 1.8.9，`main/idf_component.yml` 要求 ESP-IDF >= 5.4.0）。已在 ESP-IDF 5.4.4 上实测编译通过，bin 大小 `0x3bf530`，app 分区剩余 38%。
+> 当前适配的是 `AiXiaoZhi_Hiwonder_Sensor`（xiaoZhi 1.8.9，`main/idf_component.yml` 要求 ESP-IDF >= 5.4.0）。4.3C 屏幕版本已在 ESP-IDF 5.4.4 上实测编译通过，bin 大小 `0x5dcdd0`，7M app 分区剩余 16%。
 
 ## 10. 设计说明与限制
 
