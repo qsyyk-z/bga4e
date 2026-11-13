@@ -265,9 +265,6 @@ public:
         button_.OnClick([]() {
             MahjongUi::Toggle();
         });
-        button_.OnLongPress([this]() {
-            EnterWifiConfigMode();
-        });
         GetBacklight()->SetBrightness(100);
     }
 
