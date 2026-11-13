@@ -163,7 +163,6 @@ private:
     }
 
     void InitializeTouch() {
-        esp_lcd_touch_handle_t tp;
         esp_lcd_touch_config_t tp_cfg = {
             .x_max = BSP_LCD_H_RES - 1,
             .y_max = BSP_LCD_V_RES - 1,
@@ -179,28 +178,65 @@ private:
                 .mirror_y = 0,
             },
         };
-        esp_lcd_panel_io_handle_t tp_io_handle = NULL;
-        esp_lcd_panel_io_i2c_config_t tp_io_config = {
-            .dev_addr = ESP_LCD_TOUCH_IO_I2C_GT911_ADDRESS,
-            .control_phase_bytes = 1,
-            .dc_bit_offset = 0,
-            .lcd_cmd_bits = 16,
-            .flags = {
-                .disable_control_phase = 1,
-            },
-        };
-        tp_io_config.scl_speed_hz = 400 * 1000;
 
-        esp_lcd_new_panel_io_i2c(i2c_bus_, &tp_io_config, &tp_io_handle);
+        // GT911 有时冷启动第一次 I2C 读会失败；重试两次并切换 0x5D/0x14。
+        // 最重要：失败不能让 ESP_ERROR_CHECK abort，否则会反复重启。
+        for (int attempt = 0; attempt < 3; ++attempt) {
+            bool backup_addr = (attempt % 2) == 1;
+            uint8_t addr = backup_addr ? ESP_LCD_TOUCH_IO_I2C_GT911_ADDRESS_BACKUP
+                                       : ESP_LCD_TOUCH_IO_I2C_GT911_ADDRESS;
+            int int_level = backup_addr ? 1 : 0;
 
-        ESP_LOGI(TAG, "Initialize touch controller");
-        ESP_ERROR_CHECK(esp_lcd_touch_new_i2c_gt911(tp_io_handle, &tp_cfg, &tp));
-        const lvgl_port_touch_cfg_t touch_cfg = {
-            .disp = lv_display_get_default(),
-            .handle = tp,
-        };
-        lvgl_port_add_touch(&touch_cfg);
-        ESP_LOGI(TAG, "Touch panel initialized successfully");
+            gpio_set_level(BSP_LCD_TOUCH_INT, int_level);
+            esp_io_expander_set_level(io_expander, BSP_LCD_TOUCH_RST, 0);
+            vTaskDelay(pdMS_TO_TICKS(20));
+            esp_io_expander_set_level(io_expander, BSP_LCD_TOUCH_RST, 1);
+            vTaskDelay(pdMS_TO_TICKS(120));
+
+            esp_lcd_panel_io_handle_t tp_io_handle = NULL;
+            esp_lcd_panel_io_i2c_config_t tp_io_config = {
+                .dev_addr = addr,
+                .control_phase_bytes = 1,
+                .dc_bit_offset = 0,
+                .lcd_cmd_bits = 16,
+                .flags = {
+                    .disable_control_phase = 1,
+                },
+            };
+            tp_io_config.scl_speed_hz = 400 * 1000;
+
+            esp_err_t err = esp_lcd_new_panel_io_i2c(i2c_bus_, &tp_io_config, &tp_io_handle);
+            if (err != ESP_OK) {
+                ESP_LOGW(TAG, "GT911 panel io failed (attempt %d): %s",
+                         attempt + 1, esp_err_to_name(err));
+                continue;
+            }
+
+            esp_lcd_touch_handle_t tp = nullptr;
+            ESP_LOGI(TAG, "Initialize touch controller (attempt %d, addr 0x%02x)",
+                     attempt + 1, addr);
+            err = esp_lcd_touch_new_i2c_gt911(tp_io_handle, &tp_cfg, &tp);
+            if (err == ESP_OK) {
+                const lvgl_port_touch_cfg_t touch_cfg = {
+                    .disp = lv_display_get_default(),
+                    .handle = tp,
+                };
+                lvgl_port_add_touch(&touch_cfg);
+                ESP_LOGI(TAG, "Touch panel initialized successfully");
+                return;
+            }
+
+            ESP_LOGW(TAG, "GT911 init failed (attempt %d): %s",
+                     attempt + 1, esp_err_to_name(err));
+            if (tp != nullptr) {
+                esp_lcd_touch_del(tp);
+            }
+            esp_lcd_panel_io_del(tp_io_handle);
+            vTaskDelay(pdMS_TO_TICKS(100));
+        }
+
+        // 触摸失败不阻塞启动：UI、语音、BOOT 键仍然可用。
+        ESP_LOGE(TAG, "GT911 not available; continuing without touch");
     }
 
     void InitializeTools() {
@@ -228,6 +264,9 @@ public:
         MahjongUi::Init(display_);
         button_.OnClick([]() {
             MahjongUi::Toggle();
+        });
+        button_.OnLongPress([this]() {
+            EnterWifiConfigMode();
         });
         GetBacklight()->SetBrightness(100);
     }
