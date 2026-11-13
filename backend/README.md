@@ -1,52 +1,63 @@
-﻿# BGA4E 鐗屽眬鍚庣涓?LLM 鍔╂墜
+# BGA4E 牌局后端与 LLM 助手
 
-闈㈠悜楹诲皢鐨勨€滅墝灞€璁板綍 / 瀹炴椂灞曠ず / 澶嶇洏 / 绛栫暐寤鸿鈥濆悗绔紝鎺?ESP32-S3 鐨勮瘑鍒粨鏋滐紝骞跺彲閫夋帴鍏ヤ换鎰?OpenAI 鍏煎澶фā鍨嬨€?
-瀵瑰簲寮€棰樻姤鍛婁腑鐨勶細
+面向麻将的“牌局记录 / 实时展示 / 复盘 / 策略建议”后端，接 ESP32-S3 的识别结果，并可选接入任意 OpenAI 兼容大模型。
 
-- **绠楁硶涓庡伐绋嬬 2 椤?*锛氳褰曟父鎴忕姸鎬佺殑鍚庣銆佺姸鎬佸睍绀恒€佸鐩橈紝骞朵笌鍥惧儚璇嗗埆妯″潡杩炴帴锛?- **绠楁硶涓庡伐绋嬬 4 椤?*锛氭帴鍏?LLM锛屾彁渚涙墦鐗岀瓥鐣ュ缓璁€?
-![鐣岄潰](docs/screenshot.png)
+对应开题报告中的：
 
-## 1. 宸插疄鐜扮殑鍔熻兘
+- **算法与工程第 2 项**：记录游戏状态的后端、状态展示、复盘，并与图像识别模块连接；
+- **算法与工程第 4 项**：接入 LLM，提供打牌策略建议。
 
-| 妯″潡 | 璇存槑 |
+![界面](docs/screenshot.png)
+
+## 1. 已实现的功能
+
+| 模块 | 说明 |
 | --- | --- |
-| 鐗屽眬鐘舵€?| 4 浜洪夯灏嗭細鎵嬬墝銆佸壇闇层€佸純鐗屻€佺墝澧欍€佸綋鍓嶇帺瀹躲€佸簞瀹躲€佸垎鏁般€佽儨璐?|
-| 浜嬩欢婧簮 | 鎽哥墝/鍑虹墝/纰?鍚?鏉?鑳?杩?璁板垎/鎵弿/褰曞叆鎵嬬墝锛屽叏閮ㄨ惤搴擄紝鍙挙閿€銆佸彲閲嶆斁 |
-| 瀹炴椂灞曠ず | 娴忚鍣ㄧ墝妗屻€佺帺瀹舵墜鐗?鍓湶/寮冪墝娌炽€佺墝澧欍€佹渶杩戝嚭鐗屻€佷簨浠舵祦 |
-| 澶嶇洏 | 鎸変簨浠堕€愭鍥炴斁锛屾敮鎸佷笂涓€姝?涓嬩竴姝?鑷姩鎾斁/鎷栧姩鏃堕棿杞?|
-| 璇嗗埆鎺ュ叆 | `POST /api/games/{id}/recognitions`锛涢檮 ESP32 涓插彛妗ユ帴鑴氭湰 |
-| 鎵嬪姩绾犻敊 | 鎵嬪姩褰曞叆鎵嬬墝銆佹挙閿€鏈€鍚庝竴姝ワ紝閫傞厤璇嗗埆涓嶅畬缇庣殑鐪熷疄鍦烘櫙 |
-| 绛栫暐寤鸿 | 鏈湴鍚戝惉/杩涘紶瑙勫垯 + LLM锛汱LM 涓嶅彲鐢ㄦ椂鑷姩闄嶇骇锛屼笉闃诲婕旂ず |
-| 璇煶 | 娴忚鍣?`speechSynthesis` 鎾姤寤鸿锛岄€傞厤鑰佸勾鐢ㄦ埛 |
-| 瀹炴椂鎺ㄩ€?| WebSocket `/ws/games/{id}`锛岃瘑鍒笂鎶ュ悗鎵€鏈夐〉闈㈠悓姝ュ埛鏂?|
+| 牌局状态 | 4 人麻将：手牌、副露、弃牌、牌墙、当前玩家、庄家、分数、胜负 |
+| 事件溯源 | 摸牌/出牌/碰/吃/杠/胡/过/记分/扫描/录入手牌，全部落库，可撤销、可重放 |
+| 实时展示 | 浏览器牌桌、玩家手牌/副露/弃牌河、牌墙、最近出牌、事件流 |
+| 复盘 | 按事件逐步回放，支持上一步/下一步/自动播放/拖动时间轴 |
+| 识别接入 | `POST /api/games/{id}/recognitions`；附 ESP32 串口桥接脚本 |
+| 手动纠错 | 手动录入手牌、撤销最后一步，适配识别不完美的真实场景 |
+| 策略建议 | 本地向听/进张规则 + LLM；LLM 不可用时自动降级，不阻塞演示 |
+| 语音 | 浏览器 `speechSynthesis` 播报建议，适配老年用户 |
+| 实时推送 | WebSocket `/ws/games/{id}`，识别上报后所有页面同步刷新 |
 
-## 2. 蹇€熷惎鍔?
+## 2. 快速启动
+
 ```powershell
 cd M08\bga4e\backend
 
-# 宸插垱寤哄ソ鐨勮櫄鎷熺幆澧?.\.venv\Scripts\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+# 已创建好的虚拟环境
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
-鎵撳紑 <http://127.0.0.1:8000>銆傚彸涓婅鈥滅敓鎴愭紨绀虹墝灞€鈥濆彲浠ュ厛鐪嬪畬鏁存晥鏋溿€?
-濡傛灉瑕佽鍚屼竴灞€鍩熺綉鍐呯殑 ESP32 鎴栨墜鏈鸿闂紝浣跨敤 `--host 0.0.0.0`锛屽苟鍦?Windows 闃茬伀澧欐斁琛?8000 绔彛銆?
-### 渚濊禆瀹夎锛堟崲鏈哄櫒鏃讹級
+打开 <http://127.0.0.1:8000>。右上角“生成演示牌局”可以先看完整效果。
+
+如果要让同一局域网内的 ESP32 或手机访问，使用 `--host 0.0.0.0`，并在 Windows 防火墙放行 8000 端口。
+
+### 依赖安装（换机器时）
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
-## 3. 涓ょ浣跨敤妯″紡
+## 3. 两种使用模式
 
-### 3.1 婕旂ず / 鎵嬪姩妯″紡
+### 3.1 演示 / 手动模式
 
-鈥滄柊寤衡€濈墝灞€鏃跺嬀閫夆€滆嚜鍔ㄥ彂鐗屸€濓紝绯荤粺浼氶殢鏈哄彂 13 寮狅紱鍙互姝ｅ父鎽哥墝銆佸嚭鐗屻€佺/鍚?鏉?鑳★紝閫傚悎婕旂ず鍜岃鍒欐祴璇曘€?
-### 3.2 鐪熷疄鎽勫儚澶存ā寮?
-鎽勫儚澶村彧鐪嬪埌妗岄潰涓婄殑寮冪墝锛岀湅涓嶅埌鍥涘鎵嬬墝锛屽洜姝ゆ柊寤虹墝灞€鏃讹細
+“新建”牌局时勾选“自动发牌”，系统会随机发 13 张；可以正常摸牌、出牌、碰/吃/杠/胡，适合演示和规则测试。
 
-- 鍙栨秷鍕鹃€夆€滆嚜鍔ㄥ彂鐗屸€濓紱
-- 绯荤粺鑷姩鍏抽棴鈥滀弗鏍兼牎楠屾墜鐗?杞鈥濓紙涔熷彲浠ユ墜鍔ㄥ彇娑堬級銆?
-杩欐牱姣忔璇嗗埆鍒颁竴寮犳墦鍑虹殑鐗岋紝灏辫兘璁板綍锛?
+### 3.2 真实摄像头模式
+
+摄像头只看到桌面上的弃牌，看不到四家手牌，因此新建牌局时：
+
+- 取消勾选“自动发牌”；
+- 系统自动关闭“严格校验手牌/轮次”（也可以手动取消）。
+
+这样每次识别到一张打出的牌，就能记录：
+
 ```json
 POST /api/games/{game_id}/recognitions
 {
@@ -58,60 +69,73 @@ POST /api/games/{game_id}/recognitions
 }
 ```
 
-闇€瑕佺粰鏌愪綅鐜╁绠楀悜鍚?杩涘紶鏃讹紝鍦ㄥ乏渚р€滄墜鍔ㄥ綍鍏ユ墜鐗屸€濋噷杈撳叆 13 鎴?14 寮犵墝锛堝 `1W 2W 3W 4B 5B EA`锛夛紝鎴栬€呰皟鐢細
+需要给某位玩家算向听/进张时，在左侧“手动录入手牌”里输入 13 或 14 张牌（如 `1W 2W 3W 4B 5B EA`），或者调用：
 
 ```http
 POST /api/games/{game_id}/hands/0
 {"tiles": ["1W","2W","3W","4B","5B","EA"]}
 ```
 
-鍚庣画鍙互鎶婅闊宠瘑鍒埌鐨勨€滄垜鐨勬墜鐗屾槸鈥︹€︹€濇帴鍒拌繖涓帴鍙ｃ€?
-## 4. 杩炴帴 ESP32 璇嗗埆妯″潡
+后续可以把语音识别到的“我的手牌是……”接到这个接口。
 
-### 4.1 鍥轰欢杈撳嚭
+## 4. 连接 ESP32 识别模块
 
-`firmware_app/main/APP/esp_card_recognition.cpp` 鍦ㄦ瘡甯ц瘑鍒悗杈撳嚭锛?
+### 4.1 固件输出
+
+`firmware_app/main/APP/esp_card_recognition.cpp` 在每帧识别后输出：
+
 ```text
 I (12345) CARD_RESULT: {"mode":"mahjong","tile":"3W","conf":0.923}
 ```
 
-閲嶆柊缂栬瘧鐑у綍鍚庯紝涓插彛灏辫兘鐪嬪埌杩欎竴琛屻€?
-### 4.2 PC 涓插彛妗ユ帴
+重新编译烧录后，串口就能看到这一行。
+
+### 4.2 PC 串口桥接
 
 ```powershell
 .\.venv\Scripts\python.exe tools\serial_bridge.py `
-  --port COM5 --game <缃戦〉宸︿晶鐨勭墝灞€ID> --player 0
+  --port COM5 --game <网页左侧的牌局ID> --player 0
 ```
 
-鑴氭湰榛樿 1.5 绉掑唴鐩稿悓缁撴灉鍙笂鎶ヤ竴娆★紝閬垮厤涓€甯т竴鏉″埛灞忥紱`--dry-run` 鍙互鍏堜笉鍐欏悗绔紝鍙墦鍗般€?
-### 4.3 鐩存帴 HTTP锛圵iFi锛?
-濡傛灉鍚庣画缁?ESP32 鍔?WiFi锛屽彲浠ョ洿鎺ユ妸鍚屾牱鐨?JSON POST 鍒帮細
+脚本默认 1.5 秒内相同结果只上报一次，避免一帧一条刷屏；`--dry-run` 可以先不写后端，只打印。
+
+### 4.3 直接 HTTP（WiFi）
+
+如果后续给 ESP32 加 WiFi，可以直接把同样的 JSON POST 到：
 
 ```text
-http://<PC 灞€鍩熺綉 IP>:8000/api/games/<game_id>/recognitions
+http://<PC 局域网 IP>:8000/api/games/<game_id>/recognitions
 ```
 
-鍚庣宸插紑鍚?CORS锛孍SP32銆佹墜鏈恒€佸彟涓€涓綉椤甸兘鍙互涓婃姤銆?
-## 5. 鎺ュ叆 LLM
+后端已开启 CORS，ESP32、手机、另一个网页都可以上报。
 
-澶嶅埗閰嶇疆锛?
+## 5. 接入 LLM
+
+复制配置：
+
 ```powershell
 Copy-Item .env.example .env
 notepad .env
 ```
 
-濉叆浠绘剰 OpenAI 鍏煎鏈嶅姟锛?
+填入任意 OpenAI 兼容服务：
+
 ```dotenv
 LLM_API_KEY=sk-...
 LLM_BASE_URL=https://api.deepseek.com/v1
 LLM_MODEL=deepseek-chat
 ```
 
-閲嶅惎鏈嶅姟鍚庯紝鍙充笂瑙掑窘绔犱細鍙樻垚鈥滃ぇ妯″瀷宸叉帴鍏モ€濄€傜偣鍑烩€滅粰鍑哄缓璁€濇椂锛?
-1. 鏈湴瑙勫垯鍏堢畻鍚戝惉銆佽繘寮犮€佸€欓€夊嚭鐗岋紱
-2. 鎶婄墝灞€鎽樿 + 瑙勫垯鍒嗘瀽浜ょ粰 LLM锛?3. LLM 杩斿洖 JSON锛歚action/tile/reason/confidence/alternatives`锛?4. 鍚庣鏍￠獙寤鸿鏄惁鍚堟硶锛屼笉鍚堟硶鎴栬秴鏃跺垯鍥為€€鍒版湰鍦拌鍒欍€?
-**娌℃湁 API Key 涔熻兘瀹屾暣婕旂ず**锛氬窘绔犳樉绀衡€滄湰鍦拌鍒欐ā寮忊€濓紝寤鸿鐢卞悜鍚?杩涘紶绠楁硶缁欏嚭銆?
-鐜鍙橀噺涔熸敮鎸侊細
+重启服务后，右上角徽章会变成“大模型已接入”。点击“给出建议”时：
+
+1. 本地规则先算向听、进张、候选出牌；
+2. 把牌局摘要 + 规则分析交给 LLM；
+3. LLM 返回 JSON：`action/tile/reason/confidence/alternatives`；
+4. 后端校验建议是否合法，不合法或超时则回退到本地规则。
+
+**没有 API Key 也能完整演示**：徽章显示“本地规则模式”，建议由向听/进张算法给出。
+
+环境变量也支持：
 
 ```powershell
 $env:LLM_API_KEY="sk-..."
@@ -119,98 +143,120 @@ $env:LLM_BASE_URL="https://api.deepseek.com/v1"
 $env:LLM_MODEL="deepseek-chat"
 ```
 
-## 6. API 涓€瑙?
-| 鏂规硶 | 璺緞 | 璇存槑 |
+## 6. API 一览
+
+| 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| GET | `/api/health` | 鍋ュ悍妫€鏌ャ€丩LM 鏄惁閰嶇疆 |
-| GET | `/api/meta/tiles` | 鐗屼唬鐮?涓枃鍚?棰滆壊 |
-| GET | `/api/games` | 鐗屽眬鍒楄〃 |
-| POST | `/api/games` | 鏂板缓鐗屽眬 |
-| POST | `/api/games/demo` | 鐢熸垚闅忔満婕旂ず鐗屽眬 |
-| GET | `/api/games/{id}` | 褰撳墠鐘舵€?+ 鍚堟硶鎿嶄綔 |
-| DELETE | `/api/games/{id}` | 鍒犻櫎 |
-| GET | `/api/games/{id}/events` | 浜嬩欢鍒楄〃锛坄?after=seq`锛?|
-| POST | `/api/games/{id}/events` | 杩藉姞鍔ㄤ綔浜嬩欢 |
-| POST | `/api/games/{id}/recognitions` | 涓婃姤璇嗗埆缁撴灉锛坰can锛?|
-| POST | `/api/games/{id}/hands/{player}` | 鎵嬪姩褰曞叆鎵嬬墝 |
-| POST | `/api/games/{id}/advice` | 鑾峰彇绛栫暐寤鸿 |
-| POST | `/api/games/{id}/undo` | 鎾ら攢鏈€鍚庝竴鏉′簨浠?|
-| GET | `/api/games/{id}/replay` | 澶嶇洏蹇収 |
-| GET | `/api/games/{id}/hand/{player}` | 鍗曚汉鎵嬬墝鍒嗘瀽 |
-| GET | `/api/current/summary` | 鏈€杩戜竴灞€鐨勭簿绠€鐘舵€侊紙灏忔櫤鐢級 |
-| POST | `/api/current/advice` | 鏈€杩戜竴灞€鐨勭瓥鐣ュ缓璁?|
-| POST | `/api/current/hands/{player}` | 鏈€杩戜竴灞€褰曞叆鎵嬬墝 |
-| POST | `/api/current/events` | 鏈€杩戜竴灞€杩藉姞浜嬩欢 |
-| WS | `/ws/games/{id}` | 瀹炴椂鐘舵€佹帹閫?|
+| GET | `/api/health` | 健康检查、LLM 是否配置 |
+| GET | `/api/meta/tiles` | 牌代码/中文名/颜色 |
+| GET | `/api/games` | 牌局列表 |
+| POST | `/api/games` | 新建牌局 |
+| POST | `/api/games/demo` | 生成随机演示牌局 |
+| GET | `/api/games/{id}` | 当前状态 + 合法操作 |
+| DELETE | `/api/games/{id}` | 删除 |
+| GET | `/api/games/{id}/events` | 事件列表（`?after=seq`） |
+| POST | `/api/games/{id}/events` | 追加动作事件 |
+| POST | `/api/games/{id}/recognitions` | 上报识别结果（scan） |
+| POST | `/api/games/{id}/hands/{player}` | 手动录入手牌 |
+| POST | `/api/games/{id}/advice` | 获取策略建议 |
+| POST | `/api/games/{id}/undo` | 撤销最后一条事件 |
+| GET | `/api/games/{id}/replay` | 复盘快照 |
+| GET | `/api/games/{id}/hand/{player}` | 单人手牌分析 |
+| GET | `/api/current/summary` | 最近一局的精简状态（小智用） |
+| POST | `/api/current/advice` | 最近一局的策略建议 |
+| POST | `/api/current/hands/{player}` | 最近一局录入手牌 |
+| POST | `/api/current/events` | 最近一局追加事件 |
+| WS | `/ws/games/{id}` | 实时状态推送 |
 
-浜や簰寮忔枃妗ｏ細<http://127.0.0.1:8000/docs>
+交互式文档：<http://127.0.0.1:8000/docs>
 
-浜嬩欢绫诲瀷锛?
+事件类型：
+
 ```text
 draw / discard / peng / chi / gang / win / pass / scan / set_hand / score
 ```
 
-## 7. 鐩綍缁撴瀯
+## 7. 目录结构
 
 ```text
 backend/
-鈹溾攢鈹€ app/
-鈹?  鈹溾攢鈹€ main.py       FastAPI 璺敱銆乄ebSocket銆侀潤鎬侀〉闈?鈹?  鈹溾攢鈹€ game.py       楹诲皢鐘舵€佹満銆佷簨浠跺簲鐢ㄣ€佸悎娉曞姩浣?鈹?  鈹溾攢鈹€ shanten.py    鍚戝惉/杩涘紶/鏈€浣冲嚭鐗?鈹?  鈹溾攢鈹€ advisor.py    鏈湴瑙勫垯 + LLM + 缂撳瓨/闄嶇骇
-鈹?  鈹溾攢鈹€ tiles.py      鐗岀紪鐮併€佷腑鏂囧悕銆佽В鏋?鈹?  鈹溾攢鈹€ db.py         SQLite 浜嬩欢瀛樺偍
-鈹?  鈹溾攢鈹€ schemas.py    Pydantic 璇锋眰妯″瀷
-鈹?  鈹斺攢鈹€ config.py     鐜鍙橀噺
-鈹溾攢鈹€ static/           鏃犳瀯寤轰緷璧栫殑鍓嶇锛圚TML/CSS/JS锛?鈹溾攢鈹€ tools/
-鈹?  鈹斺攢鈹€ serial_bridge.py
-鈹溾攢鈹€ tests/            pytest
-鈹溾攢鈹€ docs/screenshot.png
-鈹溾攢鈹€ requirements.txt
-鈹斺攢鈹€ .env.example
+├── app/
+│   ├── main.py       FastAPI 路由、WebSocket、静态页面
+│   ├── game.py       麻将状态机、事件应用、合法动作
+│   ├── shanten.py    向听/进张/最佳出牌
+│   ├── advisor.py    本地规则 + LLM + 缓存/降级
+│   ├── tiles.py      牌编码、中文名、解析
+│   ├── db.py         SQLite 事件存储
+│   ├── schemas.py    Pydantic 请求模型
+│   └── config.py     环境变量
+├── static/           无构建依赖的前端（HTML/CSS/JS）
+├── tools/
+│   └── serial_bridge.py
+├── tests/            pytest
+├── docs/screenshot.png
+├── requirements.txt
+└── .env.example
 ```
 
-## 8. 娴嬭瘯
+## 8. 测试
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-褰撳墠瑕嗙洊锛氱墝缂栫爜瑙ｆ瀽銆佸悜鍚?涓冨/鍗佷笁骞恒€佹渶浣冲嚭鐗屻€佸垱寤虹墝灞€銆佹懜鎵撱€佹挙閿€銆佸鐩樸€佽瘑鍒笂鎶ャ€佹墜鍔ㄥ綍鍏ユ墜鐗屻€佹紨绀虹墝灞€銆丩LM 闄嶇骇銆?
-## 9. 灏忔櫤璇煶 / LLM 鎺ュ叆
+当前覆盖：牌编码解析、向听/七对/十三幺、最佳出牌、创建牌局、摸打、撤销、复盘、识别上报、手动录入手牌、演示牌局、LLM 降级。
 
-濡傛灉璁惧绔娇鐢?[xiaozhi-esp32](https://github.com/78/xiaozhi-esp32) 鍋氳闊充氦浜掞紝鍙互鎶婃湰鍚庣浣滀负鈥滅墝灞€宸ュ叿鈥濇寕鍒板皬鏅虹殑 MCP 涓婏細灏忔櫤璐熻矗鍞ら啋銆丄SR銆丩LM 瀵硅瘽鍜?TTS锛屽悗绔彧璐熻矗鐗屽眬鐘舵€併€佸悜鍚?杩涘紶鍜岀瓥鐣ャ€?
-### 9.1 鍚庣鎻愪緵鐨勨€滃綋鍓嶇墝灞€鈥濇帴鍙?
-灏忔櫤璁惧涓嶉渶瑕佺煡閬撴瘡灞€ ID锛岀洿鎺ヨ闂細
+## 9. 小智语音 / LLM 接入
+
+如果设备端使用 [xiaozhi-esp32](https://github.com/78/xiaozhi-esp32) 做语音交互，可以把本后端作为“牌局工具”挂到小智的 MCP 上：小智负责唤醒、ASR、LLM 对话和 TTS，后端只负责牌局状态、向听/进张和策略。
+
+### 9.1 后端提供的“当前牌局”接口
+
+小智设备不需要知道每局 ID，直接访问：
 
 ```text
-GET  /api/current/summary?player=0     # 鎴戠殑鎵嬬墝銆佸悇瀹跺純鐗屻€佺墝澧欍€佹渶杩戝嚭鐗?POST /api/current/advice               # {"player":0,"use_llm":false}
+GET  /api/current/summary?player=0     # 我的手牌、各家弃牌、牌墙、最近出牌
+POST /api/current/advice               # {"player":0,"use_llm":false}
 POST /api/current/hands/0              # {"tiles":["1W","2W","3W"]}
-POST /api/current/events               # 璁板綍鍑虹墝绛変簨浠?```
+POST /api/current/events               # 记录出牌等事件
+```
 
-`use_llm=false` 鏃跺彧璧板悜鍚?杩涘紶瑙勫垯锛岀敱灏忔櫤鐨?LLM 璐熻矗鎶婄粨鏋滆鎴愯嚜鐒惰瑷€锛岄伩鍏嶉噸澶嶈皟鐢ㄥぇ妯″瀷銆?
-### 9.2 灏忔櫤绔?MCP 宸ュ叿
+`use_llm=false` 时只走向听/进张规则，由小智的 LLM 负责把结果说成自然语言，避免重复调用大模型。
 
-鍦?xiaozhi 宸ョ▼閲屾柊澧炰簡 `main/boards/common/mahjong_mcp.cc`锛屾敞鍐岋細
+### 9.2 小智端 MCP 工具
 
-| 宸ュ叿 | 浣滅敤 |
+在 xiaozhi 工程里新增了 `main/boards/common/mahjong_mcp.cc`，注册：
+
+| 工具 | 作用 |
 | --- | --- |
-| `self.mahjong.get_state` | 鑾峰彇褰撳墠鐗屽眬鎽樿 |
-| `self.mahjong.get_advice` | 鑾峰彇鈥滄墦鍝紶/鐞嗙敱/鍚戝惉鈥?|
-| `self.mahjong.set_hand` | 璇煶鎶ユ墜鐗屽悗褰曞叆 |
-| `self.mahjong.record_discard` | 鎵嬪姩璁板綍鎵撳嚭鐨勭墝 |
+| `self.mahjong.get_state` | 获取当前牌局摘要 |
+| `self.mahjong.get_advice` | 获取“打哪张/理由/向听” |
+| `self.mahjong.set_hand` | 语音报手牌后录入 |
+| `self.mahjong.record_discard` | 手动记录打出的牌 |
 
-閰嶇疆锛坄idf.py menuconfig` 鈫?`BGA4E Mahjong Assistant`锛夛細
+配置（`idf.py menuconfig` → `BGA4E Mahjong Assistant`）：
 
 ```text
-BGA4E_BACKEND_URL  = http://<PC 灞€鍩熺綉 IP>:8000
+BGA4E_BACKEND_URL  = http://<PC 局域网 IP>:8000
 BGA4E_PLAYER       = 0..3
 ```
 
-涔嬪悗瀵瑰皬鏅鸿锛?
-- 鈥滅幇鍦ㄧ墝灞€鎬庝箞鏍凤紵鈥?鈫?璋冪敤 `get_state`
-- 鈥滄垜璇ユ墦鍝紶锛熲€?鈫?璋冪敤 `get_advice`
-- 鈥滄垜鐨勬墜鐗屾槸涓€涓囥€佷簩涓囥€佷笁涓団€︹€︹€?鈫?璋冪敤 `set_hand`
-- 鈥滆涓€涓嬶紝鎴戞墦涓変竾鈥?鈫?璋冪敤 `record_discard`
+之后对小智说：
 
-灏忔櫤鐨勪簯绔?LLM 浼氱湅鍒拌繖浜涘伐鍏风殑璇存槑锛屽苟鍐冲畾浣曟椂璋冪敤锛涘伐鍏疯繑鍥炰腑鏂囨枃鏈紝TTS 鐩存帴鎾姤銆?
-> 褰撳墠閫傞厤鐨勬槸 `AiXiaoZhi_Hiwonder_Sensor`锛坸iaoZhi 1.8.9锛宍main/idf_component.yml` 瑕佹眰 ESP-IDF >= 5.4.0锛夈€?.3C 灞忓箷鐗堟湰宸插湪 ESP-IDF 5.4.4 涓婂疄娴嬬紪璇戦€氳繃锛宐in 澶у皬 `0x5dcdf0`锛?M app 鍒嗗尯鍓╀綑 16%銆?
-## 10. 璁捐璇存槑涓庨檺鍒?
-- **浜嬩欢婧簮**锛歚events` 鏄敮涓€浜嬪疄鏉ユ簮锛宍games.state_json` 鍙槸蹇収锛涙挙閿€/澶嶇洏閮借兘浠?`initial_json + events` 閲嶅缓銆?- **瑙傚療鑰呮ā寮?*锛歚strict_hands=false`銆乣strict_turn=false` 鏃跺厑璁稿彧璁板綍妗岄潰寮冪墝锛涙墜鐗屼负绌烘椂寤鸿鎺ュ彛浼氭槑纭彁绀衡€滃厛褰曞叆鎵嬬墝鈥濓紝涓嶄細缂栭€犮€?- **褰撳墠鍙疄鐜伴夯灏嗙姸鎬佹満**銆傛墤鍏嬬姸鎬侊紙Texas Hold'em 鐨勪笅娉ㄨ疆/鍏叡鐗?搴曟睜锛夊彲浠ュ鐢ㄥ悓涓€濂椾簨浠惰〃鍜?WebSocket锛屼絾闇€瑕佸崟鐙殑 `poker.py`锛屼笉鍦ㄦ湰娆¤寖鍥村唴銆?- **鏃犻壌鏉?*锛氳繖鏄湰鍦版紨绀?璇剧▼椤圭洰锛岄粯璁ゅ彧鐩戝惉鏈満鎴栧眬鍩熺綉銆傚叕缃戦儴缃插墠闇€瑕佸姞鐧诲綍銆侀檺娴佸拰 HTTPS銆?- **LLM 闅愮**锛氱墝灞€鎽樿浼氬彂閫佸埌閰嶇疆鐨勬ā鍨嬫湇鍔★紱濡傛灉娑夊強鐪熷疄鑰佷汉鏁版嵁锛屽缓璁湰鍦版ā鍨嬫垨鑴辨晱銆?- **璇嗗埆鎺ュ叆**锛氬綋鍓嶇敤 PC 涓插彛妗ユ帴锛岄€傚悎鏈儳褰?璋冭瘯闃舵锛涗骇鍝佸寲鏃跺缓璁?ESP32 鐩存帴 WiFi HTTP 鎴?MQTT锛屽苟鍔犳柇绾块噸杩炰笌鏈湴缂撳瓨銆?
+- “现在牌局怎么样？” → 调用 `get_state`
+- “我该打哪张？” → 调用 `get_advice`
+- “我的手牌是一万、二万、三万……” → 调用 `set_hand`
+- “记一下，我打三万” → 调用 `record_discard`
+
+小智的云端 LLM 会看到这些工具的说明，并决定何时调用；工具返回中文文本，TTS 直接播报。
+
+> 当前适配的是 `AiXiaoZhi_Hiwonder_Sensor`（xiaoZhi 1.8.9，`main/idf_component.yml` 要求 ESP-IDF >= 5.4.0）。4.3C 屏幕版本已在 ESP-IDF 5.4.4 上实测编译通过，bin 大小 `0x5dcdf0`，7M app 分区剩余 16%。
+
+## 10. 设计说明与限制
+
+- **事件溯源**：`events` 是唯一事实来源，`games.state_json` 只是快照；撤销/复盘都能从 `initial_json + events` 重建。
+- **观察者模式**：`strict_hands=false`、`strict_turn=false` 时允许只记录桌面弃牌；手牌为空时建议接口会明确提示“先录入手牌”，不会编造。
+- **当前只实现麻将状态机**。扑克状态（Texas Hold'em 的下注轮/公共牌/底池）可以复用同一套事件表和 WebSocket，但需要单独的 `poker.py`，不在本次范围内。
+- **无鉴权**：这是本地演示/课程项目，默认只监听本机或局域网。公网部署前需要加登录、限流和 HTTPS。
+- **LLM 隐私**：牌局摘要会发送到配置的模型服务；如果涉及真实老人数据，建议本地模型或脱敏。
+- **识别接入**：当前用 PC 串口桥接，适合未烧录/调试阶段；产品化时建议 ESP32 直接 WiFi HTTP 或 MQTT，并加断线重连与本地缓存。
