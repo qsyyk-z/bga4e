@@ -179,6 +179,42 @@ cd M08\bga4e\backend
 - Windows 防火墙放行 8000；
 - `BGA4E_BACKEND_URL` 用 PC 局域网 IP，不要用 `127.0.0.1`。
 
+### 4.1 方案 D：USB 串口直连（绕开 WiFi/HTTP）
+
+如果 4.3C 和 PC 明明在同一 WiFi 却连不上 8000（防火墙、AP 隔离、2.4G/5G 隔离），用串口直连：
+
+```text
+PC 后端 -> serial_game_bridge.py -> CH343 USB-UART -> 4.3C -> LVGL
+```
+
+不需要改 `BGA4E_BACKEND_URL`，也不走 TCP。
+
+1. 4.3C 接 **CH343 USB-UART** 口（不是 native USB 口）；
+2. 关闭 `idf.py monitor`、VSCode 串口监视器、PuTTY，保证 COM 口不被占用；
+3. 启动后端和桥接：
+
+```powershell
+cd M08\bga4e\backend
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+# 另开一个终端
+.\.venv\Scripts\python.exe tools\serial_game_bridge.py --port COM8 --player 0
+```
+
+`COM8` 换成 CH343 的端口；桥接每 2 秒发送一次牌局，每 6 秒发一次建议。  
+4.3C 收到第一帧 `BGA4E {...}` 后，状态栏会显示“串口已连接”，并停止 HTTP 请求。
+
+可选参数：
+
+```text
+--interval 2          牌局刷新间隔
+--advice-interval 6   自动建议间隔；0 表示只响应“建议”按钮
+--echo                同时打印 4.3C 的普通日志
+```
+
+屏幕上的“建议”按钮会通过串口发 `BGA4E_REQ`，桥接收到后立即回一帧建议。  
+桥接运行时不要同时开 `idf.py monitor`，否则两个程序会抢同一个 COM 口。
+
 ## 5. MCP 工具
 
 | 工具 | 作用 | 用户说法 |

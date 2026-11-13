@@ -1,12 +1,14 @@
 #include "mahjong_ui.h"
 
 #include <cJSON.h>
+#include <driver/uart.h>
 #include <esp_log.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
 #include <atomic>
 #include <cstdio>
+#include <cstring>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -251,6 +253,11 @@ public:
         xTaskCreate([](void* arg) {
             static_cast<MahjongUiImpl*>(arg)->TaskLoop();
         }, "mahjong_ui", 10240, this, 3, &task_);
+
+        // 方案 D：PC 通过 CH343 USB-UART 直接发送 JSON，完全绕开 WiFi/HTTP。
+        xTaskCreate([](void* arg) {
+            static_cast<MahjongUiImpl*>(arg)->SerialTask();
+        }, "mahjong_serial", 8192, this, 4, &serial_task_);
     }
 
     void Toggle() {
@@ -298,6 +305,15 @@ private:
         int ticks = 0;
         bool waiting_network = false;
         while (true) {
+            // 串口模式：PC 已经通过 UART 发来牌局，不再走 HTTP/WiFi。
+            if (serial_active_.load()) {
+                if (advice_requested_.exchange(false)) {
+                    SendSerialAdviceRequest();
+                }
+                vTaskDelay(pdMS_TO_TICKS(1000));
+                continue;
+            }
+
             // 关键：WiFi/lwIP 还没启动时绝不能创建 HTTP 连接，否则会触发
             // tcpip_send_msg_wait_sem: Invalid mbox 断言。
             if (!WifiStation::GetInstance().IsConnected()) {
@@ -321,6 +337,62 @@ private:
             }
             vTaskDelay(pdMS_TO_TICKS(1500));
         }
+    }
+
+    // UART0 是 CH343 的 console UART。PC 端只发 BGA4E 前缀的 JSON 行，
+    // 其他日志/普通输入全部忽略。
+    void SerialTask() {
+        std::string buffer;
+        uint8_t chunk[256];
+        while (true) {
+            int n = uart_read_bytes(UART_NUM_0, chunk, sizeof(chunk), pdMS_TO_TICKS(200));
+            if (n <= 0) {
+                continue;
+            }
+            buffer.append(reinterpret_cast<char*>(chunk), n);
+            if (buffer.size() > 16384) {
+                buffer.erase(0, buffer.size() - 8192);
+            }
+            size_t pos;
+            while ((pos = buffer.find('\n')) != std::string::npos) {
+                std::string line = buffer.substr(0, pos);
+                buffer.erase(0, pos + 1);
+                if (!line.empty() && line.back() == '\r') {
+                    line.pop_back();
+                }
+                HandleSerialLine(line);
+            }
+        }
+    }
+
+    void HandleSerialLine(const std::string& line) {
+        constexpr const char* kPrefix = "BGA4E ";
+        if (line.rfind(kPrefix, 0) != 0) {
+            return;
+        }
+        std::string type;
+        try {
+            auto root = ParseJson(line.substr(strlen(kPrefix)));
+            type = JsonString(root.get(), "type");
+            if (type == "summary") {
+                serial_active_.store(true);
+                UpdateSummary(root.get());
+                ESP_LOGI(TAG, "serial summary received");
+            } else if (type == "advice") {
+                UpdateAdvice(root.get());
+                ESP_LOGI(TAG, "serial advice received");
+            } else if (type == "ping") {
+                const char* pong = "BGA4E {\"type\":\"pong\"}\n";
+                uart_write_bytes(UART_NUM_0, pong, strlen(pong));
+            }
+        } catch (const std::exception& e) {
+            ESP_LOGW(TAG, "bad serial json: %s", e.what());
+        }
+    }
+
+    void SendSerialAdviceRequest() {
+        const char* req = "BGA4E_REQ {\"type\":\"advice\"}\n";
+        uart_write_bytes(UART_NUM_0, req, strlen(req));
     }
 
     void ShowWaitingNetwork() {
@@ -362,7 +434,7 @@ private:
 
     void UpdateSummary(const cJSON* root) {
         DisplayLockGuard lock(display_);
-        lv_label_set_text(status_label_, "已连接");
+        lv_label_set_text(status_label_, serial_active_.load() ? "串口已连接" : "已连接");
 
         std::string current = JsonString(root, "current_name", "—");
         int wall = JsonInt(root, "wall_remaining", 0);
@@ -473,7 +545,9 @@ private:
     lv_obj_t* advice_meta_ = nullptr;
     std::atomic<bool> refresh_requested_{true};
     std::atomic<bool> advice_requested_{false};
+    std::atomic<bool> serial_active_{false};
     TaskHandle_t task_ = nullptr;
+    TaskHandle_t serial_task_ = nullptr;
 };
 
 static MahjongUiImpl* g_mahjong_ui = nullptr;
