@@ -76,9 +76,10 @@ def advice_payload(base: str, player: int) -> dict:
 
 def send(ser: serial.Serial, payload: dict) -> None:
     line = "BGA4E " + json.dumps(payload, ensure_ascii=False) + "\n"
+    print("TX", payload.get("type"), payload.get("action", ""),
+          payload.get("wall_remaining", ""), flush=True)
     ser.write(line.encode("utf-8"))
     ser.flush()
-    print("TX", payload.get("type"), payload.get("action", ""), payload.get("wall_remaining", ""))
 
 
 def main() -> int:
@@ -94,8 +95,8 @@ def main() -> int:
     args = ap.parse_args()
 
     base = args.base_url.rstrip("/")
-    ser = serial.Serial(args.port, args.baud, timeout=0.2)
-    print(f"串口 {args.port} @ {args.baud}，后端 {base}，玩家 {args.player}")
+    ser = serial.Serial(args.port, args.baud, timeout=0.2, write_timeout=2)
+    print(f"串口 {args.port} @ {args.baud}，后端 {base}，玩家 {args.player}", flush=True)
 
     last_summary = 0.0
     last_advice = 0.0
