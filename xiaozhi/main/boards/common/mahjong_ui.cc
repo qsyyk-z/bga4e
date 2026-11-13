@@ -294,8 +294,12 @@ private:
     }
 
     void TaskLoop() {
+        int ticks = 0;
         while (true) {
-            if (refresh_requested_.exchange(false)) {
+            // 点击“刷新”立即拉取；空闲时每 3 个周期（约 4.5 秒）自动刷新一次
+            bool refresh = refresh_requested_.exchange(false) || (ticks % 3 == 0);
+            ticks++;
+            if (refresh) {
                 FetchSummary();
             }
             if (advice_requested_.exchange(false)) {
