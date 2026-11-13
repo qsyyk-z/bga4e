@@ -16,6 +16,7 @@
 #include "display.h"
 #include "http.h"
 #include "sdkconfig.h"
+#include "wifi_station.h"
 
 #define TAG "MahjongUi"
 
@@ -295,7 +296,20 @@ private:
 
     void TaskLoop() {
         int ticks = 0;
+        bool waiting_network = false;
         while (true) {
+            // 关键：WiFi/lwIP 还没启动时绝不能创建 HTTP 连接，否则会触发
+            // tcpip_send_msg_wait_sem: Invalid mbox 断言。
+            if (!WifiStation::GetInstance().IsConnected()) {
+                if (!waiting_network) {
+                    waiting_network = true;
+                    ShowWaitingNetwork();
+                }
+                vTaskDelay(pdMS_TO_TICKS(1000));
+                continue;
+            }
+            waiting_network = false;
+
             // 点击“刷新”立即拉取；空闲时每 3 个周期（约 4.5 秒）自动刷新一次
             bool refresh = refresh_requested_.exchange(false) || (ticks % 3 == 0);
             ticks++;
@@ -307,6 +321,12 @@ private:
             }
             vTaskDelay(pdMS_TO_TICKS(1500));
         }
+    }
+
+    void ShowWaitingNetwork() {
+        DisplayLockGuard lock(display_);
+        lv_label_set_text(status_label_, "等待 WiFi");
+        lv_label_set_text(advice_reason_, "正在连接 WiFi…\n连接成功后会自动刷新牌局。");
     }
 
     void FetchSummary() {
