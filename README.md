@@ -55,6 +55,47 @@ cd M08\bga4e\backend
 
 另外已适配 **ESP32-S3-Touch-LCD-4.3C（800×480）**：新增板级 RGB 屏/GT911 触摸/CH32V003 IO 扩展代码和 `mahjong_ui.cc` LVGL 界面，把当前牌局、四家弃牌、手牌和策略建议直接显示在开发板上。用 ESP-IDF 5.4.4 实测编译通过，bin `0x5dcdf0`，7M app 分区剩余 16%。
 
+
+## 0.3 单仓库目录（重构后）
+
+显示固件已经从小智上游工程收进本仓库，不再依赖外部 `AiXiaoZhi_Hiwonder_Sensor` 才能编译：
+
+```text
+bga4e/
+├── backend/          # FastAPI + SQLite + serial_game_bridge.py
+├── firmware_app/     # 摄像头 ESP-IDF 工程
+├── xiaozhi/          # 小智 + 4.3C LVGL 显示 ESP-IDF 工程
+├── scripts/          # 一键运行/烧录脚本
+├── datasets/         # 数据 meta
+├── models/           # 模型
+└── docs/             # 说明
+```
+
+打开三个终端即可：
+
+```powershell
+# 1. 后端
+.\scripts\run_backend.ps1
+
+# 2. 烧录 4.3C 显示板
+.\scripts\flash_display.ps1 -Port COM9
+
+# 3. PC -> 4.3C 串口桥接（先关闭 monitor）
+.\scripts\run_serial_bridge.ps1 -Port COM9
+```
+
+摄像头板：
+
+```powershell
+.\scripts\flash_camera.ps1 -Port COM8
+```
+
+说明：
+
+- `xiaozhi/managed_components/`、`xiaozhi/build/` 只保留在本地，不入库；
+- 首次编译会自动使用 `dependencies.lock` 里的版本；
+- 旧的 `AiXiaoZhi_Hiwonder_Sensor` 和两个 bga4e clone 只作为备份，不再作为主工程。
+
 ---
 
 ## 1. 与 02_Face_recognition_project 的关系

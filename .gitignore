@@ -33,3 +33,12 @@ backend/ui*.png
 backend/dom.html
 backend/demo_resp.json
 backend/build_out*.txt
+
+# 小智完整显示工程：依赖和构建产物不入库，保留源码/配置/本地组件
+/xiaozhi/build/
+/xiaozhi/managed_components/
+/xiaozhi/.cache/
+/xiaozhi/sdkconfig.old
+/xiaozhi/sdkconfig.bak_*
+/xiaozhi/build_*.txt
+/xiaozhi/releases/

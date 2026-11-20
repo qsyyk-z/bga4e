@@ -2,6 +2,7 @@
 
 #include <cJSON.h>
 #include <driver/uart.h>
+#include <driver/usb_serial_jtag.h>
 #include <esp_log.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
@@ -26,10 +27,19 @@ LV_FONT_DECLARE(font_puhui_20_4);
 LV_FONT_DECLARE(font_puhui_30_4);
 
 #ifndef CONFIG_BGA4E_BACKEND_URL
-#define CONFIG_BGA4E_BACKEND_URL "http://192.168.1.100:8000"
+#define CONFIG_BGA4E_BACKEND_URL "http://192.168.3.134:8000"
 #endif
 #ifndef CONFIG_BGA4E_PLAYER
 #define CONFIG_BGA4E_PLAYER 0
+#endif
+#ifndef CONFIG_BGA4E_SERIAL_UART_NUM
+#define CONFIG_BGA4E_SERIAL_UART_NUM 0
+#endif
+#ifndef CONFIG_BGA4E_SERIAL_BAUDRATE
+#define CONFIG_BGA4E_SERIAL_BAUDRATE 115200
+#endif
+#ifndef CONFIG_BGA4E_SERIAL_USB
+#define CONFIG_BGA4E_SERIAL_USB 1
 #endif
 
 namespace {
@@ -41,6 +51,10 @@ constexpr uint32_t COLOR_MUTED = 0x6F675B;
 constexpr uint32_t COLOR_TABLE = 0x1D5A47;
 constexpr uint32_t COLOR_GOLD = 0xC49A2C;
 constexpr uint32_t COLOR_RED = 0xB23A2B;
+#if !CONFIG_BGA4E_SERIAL_USB
+constexpr uart_port_t kSerialUart =
+    static_cast<uart_port_t>(CONFIG_BGA4E_SERIAL_UART_NUM);
+#endif
 
 std::string BaseUrl() {
     std::string url = CONFIG_BGA4E_BACKEND_URL;
@@ -342,16 +356,58 @@ private:
     // UART0 是 CH343 的 console UART。PC 端只发 BGA4E 前缀的 JSON 行，
     // 其他日志/普通输入全部忽略。
     void SerialTask() {
-        // Console UART0 可能已经装过驱动；未装时补装，保证 uart_read_bytes 可用。
-        esp_err_t err = uart_driver_install(UART_NUM_0, 4096, 0, 0, nullptr, 0);
-        if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
-            ESP_LOGW(TAG, "uart driver install failed: %s", esp_err_to_name(err));
+#if CONFIG_BGA4E_SERIAL_USB
+        if (!usb_serial_jtag_is_driver_installed()) {
+            usb_serial_jtag_driver_config_t config = {
+                .tx_buffer_size = 4096,
+                .rx_buffer_size = 4096,
+            };
+            esp_err_t err = usb_serial_jtag_driver_install(&config);
+            if (err != ESP_OK) {
+                ESP_LOGE(TAG, "USB Serial/JTAG driver install failed: %s",
+                         esp_err_to_name(err));
+                vTaskDelete(nullptr);
+                return;
+            }
         }
+        ESP_LOGI(TAG, "serial bridge listening on native USB Serial/JTAG");
+#else
+        if (!uart_is_driver_installed(kSerialUart)) {
+            esp_err_t err = uart_driver_install(kSerialUart, 4096, 0, 0, nullptr, 0);
+            if (err != ESP_OK) {
+                ESP_LOGE(TAG, "serial UART%d driver install failed: %s",
+                         CONFIG_BGA4E_SERIAL_UART_NUM, esp_err_to_name(err));
+                vTaskDelete(nullptr);
+                return;
+            }
+            uart_config_t config = {
+                .baud_rate = CONFIG_BGA4E_SERIAL_BAUDRATE,
+                .data_bits = UART_DATA_8_BITS,
+                .parity = UART_PARITY_DISABLE,
+                .stop_bits = UART_STOP_BITS_1,
+                .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+                .source_clk = UART_SCLK_DEFAULT,
+            };
+            err = uart_param_config(kSerialUart, &config);
+            if (err != ESP_OK) {
+                ESP_LOGE(TAG, "serial UART%d config failed: %s",
+                         CONFIG_BGA4E_SERIAL_UART_NUM, esp_err_to_name(err));
+                vTaskDelete(nullptr);
+                return;
+            }
+        }
+        ESP_LOGI(TAG, "serial bridge listening on UART%d @ %d",
+                 CONFIG_BGA4E_SERIAL_UART_NUM, CONFIG_BGA4E_SERIAL_BAUDRATE);
+#endif
 
         std::string buffer;
         uint8_t chunk[256];
         while (true) {
-            int n = uart_read_bytes(UART_NUM_0, chunk, sizeof(chunk), pdMS_TO_TICKS(200));
+#if CONFIG_BGA4E_SERIAL_USB
+            int n = usb_serial_jtag_read_bytes(chunk, sizeof(chunk), pdMS_TO_TICKS(200));
+#else
+            int n = uart_read_bytes(kSerialUart, chunk, sizeof(chunk), pdMS_TO_TICKS(200));
+#endif
             if (n <= 0) {
                 continue;
             }
@@ -380,16 +436,15 @@ private:
         try {
             auto root = ParseJson(line.substr(strlen(kPrefix)));
             type = JsonString(root.get(), "type");
+            serial_active_.store(true);
             if (type == "summary") {
-                serial_active_.store(true);
                 UpdateSummary(root.get());
                 ESP_LOGI(TAG, "serial summary received");
             } else if (type == "advice") {
                 UpdateAdvice(root.get());
                 ESP_LOGI(TAG, "serial advice received");
             } else if (type == "ping") {
-                const char* pong = "BGA4E {\"type\":\"pong\"}\n";
-                uart_write_bytes(UART_NUM_0, pong, strlen(pong));
+                SendSerialLine("{\"type\":\"pong\"}");
             }
         } catch (const std::exception& e) {
             ESP_LOGW(TAG, "bad serial json: %s", e.what());
@@ -398,7 +453,27 @@ private:
 
     void SendSerialAdviceRequest() {
         const char* req = "BGA4E_REQ {\"type\":\"advice\"}\n";
-        uart_write_bytes(UART_NUM_0, req, strlen(req));
+#if CONFIG_BGA4E_SERIAL_USB
+        int written = usb_serial_jtag_write_bytes(req, strlen(req), pdMS_TO_TICKS(1000));
+#else
+        int written = uart_write_bytes(kSerialUart, req, strlen(req));
+#endif
+        if (written < 0) {
+            ESP_LOGW(TAG, "serial advice request failed");
+        }
+    }
+
+    void SendSerialLine(const char* json) {
+        std::string line = "BGA4E " + std::string(json) + "\n";
+#if CONFIG_BGA4E_SERIAL_USB
+        int written = usb_serial_jtag_write_bytes(
+            line.data(), line.size(), pdMS_TO_TICKS(1000));
+#else
+        int written = uart_write_bytes(kSerialUart, line.data(), line.size());
+#endif
+        if (written < 0) {
+            ESP_LOGW(TAG, "serial response failed");
+        }
     }
 
     void ShowWaitingNetwork() {

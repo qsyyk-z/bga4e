@@ -17,7 +17,7 @@
 #define TAG "MahjongMcp"
 
 #ifndef CONFIG_BGA4E_BACKEND_URL
-#define CONFIG_BGA4E_BACKEND_URL "http://192.168.1.100:8000"
+#define CONFIG_BGA4E_BACKEND_URL "http://192.168.3.134:8000"
 #endif
 
 #ifndef CONFIG_BGA4E_PLAYER
