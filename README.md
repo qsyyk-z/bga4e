@@ -51,9 +51,9 @@ cd M08\bga4e\backend
 
 打开 <http://127.0.0.1:8000>，点右上角“生成演示牌局”即可看到完整牌桌、事件流、复盘和策略建议。详细说明见 [`backend/README.md`](backend/README.md)。
 
-设备端如果使用小智（`AiXiaoZhi_Hiwonder_Sensor`，xiaoZhi 1.8.9，ESP-IDF 5.4.4 可编译）做语音/LLM，按 [`xiaozhi/README.md`](xiaozhi/README.md) 把 `mahjong_mcp.cc` 拷进去；小智会通过 MCP 工具调用后端的 `get_state/get_advice/set_hand/record_discard`，由小智的 LLM 负责说话、后端负责算牌。
+设备端显示固件已经完整收进 [`xiaozhi/`](xiaozhi/)，可直接用 ESP-IDF 5.4.4 编译；小智通过 MCP 工具调用后端的 `get_state/get_advice/set_hand/record_discard`，由小智的 LLM 负责说话、后端负责算牌。
 
-另外已适配 **ESP32-S3-Touch-LCD-4.3C（800×480）**：新增板级 RGB 屏/GT911 触摸/CH32V003 IO 扩展代码和 `mahjong_ui.cc` LVGL 界面，把当前牌局、四家弃牌、手牌和策略建议直接显示在开发板上。用 ESP-IDF 5.4.4 实测编译通过，bin `0x5dcdf0`，7M app 分区剩余 16%。
+另外已适配 **ESP32-S3-Touch-LCD-4.3C（800×480）**：新增板级 RGB 屏/GT911 触摸/CH32V003 IO 扩展代码和 `mahjong_ui.cc` LVGL 界面，把当前牌局、四家弃牌、手牌和策略建议直接显示在开发板上。用 ESP-IDF 5.4.4 实测编译通过，bin `0x5defc0`，7M app 分区剩余 16%。
 
 
 ## 0.3 单仓库目录（重构后）
