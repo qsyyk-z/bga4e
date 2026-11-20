@@ -225,6 +225,7 @@ private:
         lv_obj_set_style_border_width(top, 0, 0);
         lv_obj_remove_flag(top, LV_OBJ_FLAG_SCROLLABLE);
         MakeLabel(top, "读入手牌", &font_puhui_30_4, COLOR_GOLD, 24, 14);
+        MakeButton(top, "语音", 580, 14, 84, 42, OnChat, this);
         MakeButton(top, "返回", 680, 14, 90, 42, OnBackSetup, this);
 
         ready_hint_ = MakeLabel(ready_screen_,
@@ -397,13 +398,22 @@ private:
 
     void TaskLoop() {
         while (true) {
-            if (LocalGame::Instance().active()) {
-                bool changed = LocalGame::Instance().Tick();
-                if (changed) {
-                    DisplayLockGuard lock(display_);
-                    if (lv_screen_active() == game_screen_) {
-                        UpdateGameLocked();
-                    }
+            bool active = LocalGame::Instance().active();
+            bool demo = LocalGame::Instance().demo();
+            bool changed = false;
+            if (active && demo) {
+                changed = LocalGame::Instance().Tick();
+            }
+            // 演示模式自动摸打；正式模式等待摄像头/语音通过 MCP 更新，
+            // 这里定时刷新，保证语音录入的牌能马上显示出来。
+            if (active && (!demo || changed)) {
+                DisplayLockGuard lock(display_);
+                if (lv_screen_active() == ready_screen_) {
+                    // 语音/摄像头已经通过 MCP 录入 13 张手牌，自动进牌局。
+                    lv_screen_load(game_screen_);
+                    UpdateGameLocked();
+                } else if (lv_screen_active() == game_screen_) {
+                    UpdateGameLocked();
                 }
             }
             vTaskDelay(pdMS_TO_TICKS(1200));
@@ -472,7 +482,15 @@ private:
             self->ShowGame();
             return;
         }
-        self->StartSelected(false, true);
+        DisplayLockGuard lock(self->display_);
+        if (self->ready_hint_ != nullptr) {
+            lv_label_set_text(self->ready_hint_,
+                              "还没有读到你的手牌。\n\n"
+                              "请通过摄像头读入，或者点右上角“语音”\n"
+                              "对小智报牌，例如：\n"
+                              "“我手里有一万、二万、三条……”\n"
+                              "读完后小智会直接进入牌局。");
+        }
     }
     static void OnBackSetup(lv_event_t* e) {
         auto* self = static_cast<MahjongUiImpl*>(lv_event_get_user_data(e));
