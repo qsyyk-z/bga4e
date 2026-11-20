@@ -124,6 +124,14 @@ int ParseMahjongTile(const std::string& raw) {
             return i;
         }
     }
+    // 摄像头协议可能输出阿拉伯数字 + 花色，例如 5万 / 5条 / 5筒。
+    if (value.size() >= 4 && value[0] >= '1' && value[0] <= '9') {
+        const std::string suffix = value.substr(1);
+        int number = value[0] - '1';
+        if (suffix == "万") return number;
+        if (suffix == "条") return 9 + number;
+        if (suffix == "筒") return 18 + number;
+    }
     std::string upper = Upper(value);
     if (upper == "EA") return 27;
     if (upper == "SO") return 28;
