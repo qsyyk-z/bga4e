@@ -7,11 +7,11 @@ The camera firmware prints lines such as:
 
 This bridge turns them into:
     data/camera/game_YYYYmmdd_HHMMSS.jsonl   (all accepted cards)
-    data/camera/latest.json                  (last accepted card)
+    data/camera/latest.json                  ({"hand":[...]} for the 4.3C)
 
 It is intentionally transport-only: the 4.3C can read a hand snapshot from
-/sdcard/bga4e/cards.json (see the "SD读牌" button). Copy/merge latest.json into
-that file when you want to hand the camera result to the display.
+/sdcard/bga4e/cards.json (see the "SD读牌" button). Copy latest.json to that
+file when you want to hand the camera result to the display.
 
 Usage:
     python backend/tools/camera_json_bridge.py --port COM7 --baud 115200
@@ -57,21 +57,31 @@ def write_atomic(path: Path, text: str) -> None:
     tmp.replace(path)
 
 
+def card_key(card: dict) -> str:
+    if card.get("mode") == "mahjong":
+        return "mahjong:" + str(card.get("name", ""))
+    return f"poker:{card.get('rank', '')}{card.get('suit', '')}"
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--port", required=True, help="camera USB serial port, e.g. COM7")
     parser.add_argument("--baud", type=int, default=115200)
     parser.add_argument("--out-dir", type=Path, default=Path("data/camera"))
     parser.add_argument("--min-conf", type=float, default=0.45)
+    parser.add_argument("--max-cards", type=int, default=14)
     args = parser.parse_args()
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     game_path = args.out_dir / f"game_{stamp}.jsonl"
     latest_path = args.out_dir / "latest.json"
-    latest_path.write_text("{}", encoding="utf-8")
+    latest_path.write_text('{"hand":[]}', encoding="utf-8")
 
     print(f"camera bridge: {args.port} @ {args.baud} -> {game_path}")
+    hand: list[dict] = []
+    last_key = ""
+    last_ts = 0.0
     accepted = 0
     with serial.Serial(args.port, args.baud, timeout=1) as ser, game_path.open(
         "a", encoding="utf-8"
@@ -90,13 +100,25 @@ def main() -> int:
                 conf = 0.0
             if conf < args.min_conf:
                 continue
-            card["ts"] = time.time()
+
+            key = card_key(card)
+            now = time.time()
+            # 同一张牌连续被识别时只更新置信度/框，不重复加入手牌。
+            if key == last_key and now - last_ts < 2.0 and hand:
+                hand[-1] = card
+            else:
+                hand.append(card)
+                if len(hand) > args.max_cards:
+                    hand = hand[-args.max_cards:]
+            last_key, last_ts = key, now
+
+            card["ts"] = now
             line = json.dumps(card, ensure_ascii=False)
             game_file.write(line + "\n")
             game_file.flush()
-            write_atomic(latest_path, line + "\n")
+            write_atomic(latest_path, json.dumps({"hand": hand}, ensure_ascii=False) + "\n")
             accepted += 1
-            print(f"[{accepted}] {line}")
+            print(f"[{accepted}] {line}  (hand={len(hand)})")
 
 
 if __name__ == "__main__":
