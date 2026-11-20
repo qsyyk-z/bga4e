@@ -445,9 +445,14 @@ private:
         }
 
         for (int i = 0; i < 4; ++i) {
-            char name[24];
-            snprintf(name, sizeof(name), "%s%d", view.players[i].name.c_str(),
-                     view.players[i].hand_count);
+            char name[64];
+            if (view.players[i].meld_count > 0) {
+                snprintf(name, sizeof(name), "%s%d+%d", view.players[i].name.c_str(),
+                         view.players[i].hand_count, view.players[i].meld_count);
+            } else {
+                snprintf(name, sizeof(name), "%s%d", view.players[i].name.c_str(),
+                         view.players[i].hand_count);
+            }
             lv_label_set_text(discard_names_[i], name);
             const auto& discards = view.players[i].discards;
             int start = std::max(0, static_cast<int>(discards.size()) - 10);
