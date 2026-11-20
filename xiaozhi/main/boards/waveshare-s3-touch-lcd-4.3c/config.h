@@ -27,6 +27,11 @@
 #define BSP_IO_EXPANDER_I2C_ADDRESS CUSTOM_IO_EXPANDER_I2C_CH32V003_ADDRESS
 #define BOOT_BUTTON_GPIO        GPIO_NUM_0
 
+// TF card (SD_MMC 1-bit). The slot is shared with no LCD pin on this board.
+#define BSP_SD_CLK              GPIO_NUM_12
+#define BSP_SD_CMD              GPIO_NUM_11
+#define BSP_SD_D0               GPIO_NUM_13
+
 /* Display */
 #define BSP_LCD_VSYNC     (GPIO_NUM_3)
 #define BSP_LCD_HSYNC     (GPIO_NUM_46)

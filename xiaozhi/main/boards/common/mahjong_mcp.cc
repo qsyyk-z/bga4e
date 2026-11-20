@@ -90,5 +90,46 @@ void AddMahjongMcpTools() {
             return "已记录打出 " + tile + "。";
         });
 
+    mcp_server.AddTool(
+        "self.mahjong.discard_tile",
+        "在用户自己的回合打出一张手牌。用户说“打三万”“出这张”“打掉五条”时调用。"
+        "牌名规则同 set_hand；只能打自己手里有的牌。",
+        PropertyList({
+            Property("tile", kPropertyTypeString),
+        }),
+        [](const PropertyList& properties) -> ReturnValue {
+            std::string tile = properties["tile"].value<std::string>();
+            std::string error;
+            if (!LocalGame::Instance().DiscardTile(LocalGame::Instance().my_seat(), tile, &error)) {
+                return "出牌失败：" + error;
+            }
+            return "已打出 " + tile + "。";
+        });
+
+    mcp_server.AddTool(
+        "self.mahjong.claim",
+        "吃或碰上一张弃牌。用户说“碰”“吃”“我碰这张”时调用。"
+        "kind 支持 chi/吃 或 peng/碰；只有手牌满足条件且上一张弃牌还在时才能成功。",
+        PropertyList({
+            Property("kind", kPropertyTypeString),
+        }),
+        [](const PropertyList& properties) -> ReturnValue {
+            std::string kind = properties["kind"].value<std::string>();
+            std::string error;
+            if (!LocalGame::Instance().Claim(LocalGame::Instance().my_seat(), kind, &error)) {
+                return "吃碰失败：" + error;
+            }
+            return "已完成" + kind + "，现在请打出一张牌。";
+        });
+
+    mcp_server.AddTool(
+        "self.mahjong.sort_hand",
+        "整理自己的手牌。用户说“理牌”“整理一下手牌”时调用。",
+        PropertyList(),
+        [](const PropertyList&) -> ReturnValue {
+            LocalGame::Instance().SortMyHand();
+            return "手牌已整理。";
+        });
+
     ESP_LOGI(TAG, "offline mahjong MCP tools registered");
 }

@@ -2,12 +2,13 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <cstdlib>
+#include <functional>
 #include <utility>
 #include <esp_log.h>
 #include <esp_random.h>
 #include <random>
-#include <sstream>
 
 #define TAG "LocalGame"
 
@@ -143,6 +144,203 @@ int ParseMahjongTile(const std::string& raw) {
     return -1;
 }
 
+bool IsPokerRankFirst(int a, int b) {
+    int rank_a = a % 13;
+    int rank_b = b % 13;
+    if (rank_a != rank_b) return rank_a < rank_b;
+    return a / 13 < b / 13;
+}
+
+// 标准型和牌向听：4 个面子 + 1 个雀头。exposed 是已经吃/碰的面子数。
+int ShantenFromCounts(int counts[kMahjongKinds], int exposed) {
+    int best = 8;
+    std::function<void(int, int, int)> dfs = [&](int pos, int melds, int partials) {
+        if (exposed + melds > 4) {
+            return;
+        }
+        while (pos < kMahjongKinds && counts[pos] == 0) {
+            ++pos;
+        }
+        if (pos >= kMahjongKinds) {
+            int m = std::min(4, exposed + melds);
+            int t = std::min(partials, 4 - m);
+            int shanten = 8 - 2 * m - t;
+            if (shanten < best) {
+                best = shanten;
+            }
+            return;
+        }
+
+        // 当作孤张跳过。
+        counts[pos]--;
+        dfs(pos, melds, partials);
+        counts[pos]++;
+
+        // 刻子。
+        if (counts[pos] >= 3) {
+            counts[pos] -= 3;
+            dfs(pos, melds + 1, partials);
+            counts[pos] += 3;
+        }
+
+        // 顺子。
+        if (pos < 27 && pos % 9 <= 6 && counts[pos + 1] > 0 && counts[pos + 2] > 0) {
+            counts[pos]--;
+            counts[pos + 1]--;
+            counts[pos + 2]--;
+            dfs(pos, melds + 1, partials);
+            counts[pos]++;
+            counts[pos + 1]++;
+            counts[pos + 2]++;
+        }
+
+        // 对子/搭子。
+        if (counts[pos] >= 2) {
+            counts[pos] -= 2;
+            dfs(pos, melds, partials + 1);
+            counts[pos] += 2;
+        }
+        if (pos < 27 && pos % 9 <= 7 && counts[pos + 1] > 0) {
+            counts[pos]--;
+            counts[pos + 1]--;
+            dfs(pos, melds, partials + 1);
+            counts[pos]++;
+            counts[pos + 1]++;
+        }
+        if (pos < 27 && pos % 9 <= 6 && counts[pos + 2] > 0) {
+            counts[pos]--;
+            counts[pos + 2]--;
+            dfs(pos, melds, partials + 1);
+            counts[pos]++;
+            counts[pos + 2]++;
+        }
+    };
+    dfs(0, 0, 0);
+    return std::max(0, std::min(8, best));
+}
+
+bool FindChiTiles(const std::vector<int>& hand, int tile, std::array<int, 3>* out) {
+    if (tile < 0 || tile >= 27) return false;
+    int suit = tile / 9;
+    int rank = tile % 9;
+    for (int start = rank - 2; start <= rank; ++start) {
+        if (start < 0 || start + 2 > 8) continue;
+        bool ok = true;
+        for (int k = 0; k < 3; ++k) {
+            int t = suit * 9 + start + k;
+            if (t == tile) continue;  // 这张来自弃牌，不需要在手里
+            if (std::count(hand.begin(), hand.end(), t) < 1) {
+                ok = false;
+                break;
+            }
+        }
+        if (ok) {
+            (*out) = {suit * 9 + start, suit * 9 + start + 1, suit * 9 + start + 2};
+            return true;
+        }
+    }
+    return false;
+}
+
+void CountHand(const std::vector<int>& hand, int counts[kMahjongKinds]) {
+    for (int i = 0; i < kMahjongKinds; ++i) counts[i] = 0;
+    for (int tile : hand) {
+        if (tile >= 0 && tile < kMahjongKinds) counts[tile]++;
+    }
+}
+
+int IsolationScore(const std::vector<int>& hand, int skip, int tile) {
+    int same = 0;
+    int neighbor = 0;
+    int gap = 0;
+    for (int i = 0; i < static_cast<int>(hand.size()); ++i) {
+        if (i == skip) continue;
+        int other = hand[i];
+        if (other == tile) {
+            same++;
+        } else if (tile < 27 && other < 27 && tile / 9 == other / 9) {
+            int distance = std::abs((tile % 9) - (other % 9));
+            if (distance == 1) neighbor++;
+            if (distance == 2) gap++;
+        }
+    }
+    return same * 6 + neighbor * 3 + gap;
+}
+
+int BestMahjongDiscard(const std::vector<int>& hand, int exposed, int* shanten_out) {
+    if (hand.empty()) return -1;
+    int best = 0;
+    int best_shanten = 99;
+    int best_isolation = 999;
+    for (int i = 0; i < static_cast<int>(hand.size()); ++i) {
+        std::vector<int> remain = hand;
+        remain.erase(remain.begin() + i);
+        int counts[kMahjongKinds];
+        CountHand(remain, counts);
+        int shanten = ShantenFromCounts(counts, exposed);
+        int isolation = IsolationScore(hand, i, hand[i]);
+        if (shanten < best_shanten ||
+            (shanten == best_shanten && isolation < best_isolation)) {
+            best = i;
+            best_shanten = shanten;
+            best_isolation = isolation;
+        }
+    }
+    if (shanten_out != nullptr) *shanten_out = best_shanten;
+    return best;
+}
+
+int PokerKeepScore(const std::vector<int>& cards) {
+    int ranks[13] = {0};
+    int suits[4] = {0};
+    for (int card : cards) {
+        ranks[card % 13]++;
+        suits[card / 13]++;
+    }
+    int pairs = 0;
+    int trips = 0;
+    int quads = 0;
+    for (int count : ranks) {
+        if (count == 2) pairs++;
+        if (count == 3) trips++;
+        if (count >= 4) quads++;
+    }
+    int max_suit = *std::max_element(suits, suits + 4);
+    int score = pairs * 16 + trips * 36 + quads * 70;
+    if (max_suit >= 5) score += 50;
+    else if (max_suit == 4) score += 14;
+
+    int straight = 0;
+    for (int start = 0; start <= 8; ++start) {
+        int run = 0;
+        for (int i = start; i < 13 && ranks[i] > 0; ++i) run++;
+        straight = std::max(straight, run);
+    }
+    if (straight >= 5) score += 40;
+    else if (straight == 4) score += 10;
+
+    int high = 0;
+    for (int card : cards) high += card % 13;
+    return score * 2 + high;
+}
+
+int BestPokerDiscard(const std::vector<int>& hand, int* reason_out) {
+    if (hand.empty()) return -1;
+    int best = 0;
+    int best_keep = -1;
+    for (int i = 0; i < static_cast<int>(hand.size()); ++i) {
+        std::vector<int> remain = hand;
+        remain.erase(remain.begin() + i);
+        int keep = PokerKeepScore(remain);
+        if (keep > best_keep) {
+            best_keep = keep;
+            best = i;
+        }
+    }
+    if (reason_out != nullptr) *reason_out = best_keep;
+    return best;
+}
+
 }  // namespace
 
 LocalGame& LocalGame::Instance() {
@@ -172,6 +370,8 @@ void LocalGame::StartLocked(GameType type, int my_seat, bool demo) {
     demo_ = demo;
     active_ = true;
     finished_ = false;
+    waiting_for_discard_ = false;
+    last_claimed_ = false;
     current_player_ = my_seat_;
     turn_ = 1;
     last_player_ = -1;
@@ -179,6 +379,7 @@ void LocalGame::StartLocked(GameType type, int my_seat, bool demo) {
     wall_.clear();
     for (auto& hand : hands_) hand.clear();
     for (auto& discard : discards_) discard.clear();
+    for (auto& meld : melds_) meld.clear();
 
     std::vector<int> deck;
     if (type_ == GameType::kMahjong) {
@@ -202,6 +403,7 @@ void LocalGame::StartLocked(GameType type, int my_seat, bool demo) {
             hands_[player].push_back(deck.back());
             deck.pop_back();
         }
+        SortHandLocked(player);
     }
     wall_ = std::move(deck);
     ESP_LOGI(TAG, "started %s game, seat %s, wall %d", TypeName(type_),
@@ -212,9 +414,11 @@ void LocalGame::Stop() {
     std::lock_guard<std::mutex> lock(mutex_);
     active_ = false;
     finished_ = false;
+    waiting_for_discard_ = false;
     wall_.clear();
     for (auto& hand : hands_) hand.clear();
     for (auto& discard : discards_) discard.clear();
+    for (auto& meld : melds_) meld.clear();
 }
 
 bool LocalGame::Tick() {
@@ -222,36 +426,87 @@ bool LocalGame::Tick() {
     return TickLocked();
 }
 
+bool LocalGame::DrawForMe() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (!active_ || finished_ || demo_ || waiting_for_discard_ ||
+        current_player_ != my_seat_) {
+        return false;
+    }
+    if (!DrawForPlayerLocked(my_seat_)) {
+        finished_ = true;
+        return false;
+    }
+    waiting_for_discard_ = true;
+    return true;
+}
+
 bool LocalGame::TickLocked() {
     if (!active_ || finished_) {
         return false;
     }
-    if (wall_.empty()) {
+    if (!demo_) {
+        // 正式模式不自动摸打；等摄像头/语音/触控更新。
+        return false;
+    }
+    if (wall_.empty() && !waiting_for_discard_) {
         finished_ = true;
         ESP_LOGI(TAG, "game finished, wall empty");
         return true;
     }
 
     int player = current_player_;
-    int tile = wall_.back();
-    wall_.pop_back();
-    hands_[player].push_back(tile);
-
-    int discard_index = ChooseDiscardLocked(player, static_cast<int>(hands_[player].size()));
-    if (discard_index < 0 || discard_index >= static_cast<int>(hands_[player].size())) {
-        discard_index = static_cast<int>(hands_[player].size()) - 1;
+    if (player == my_seat_) {
+        if (waiting_for_discard_) {
+            return false;  // 等用户点手牌出牌
+        }
+        if (!DrawForPlayerLocked(player)) {
+            finished_ = true;
+            return true;
+        }
+        waiting_for_discard_ = true;
+        ESP_LOGI(TAG, "demo stopped on my turn, waiting for touch discard");
+        return true;
     }
-    int discarded = hands_[player][discard_index];
-    hands_[player].erase(hands_[player].begin() + discard_index);
+
+    if (!waiting_for_discard_) {
+        if (!DrawForPlayerLocked(player)) {
+            finished_ = true;
+            return true;
+        }
+    }
+
+    int index = ChooseDiscardLocked(player);
+    if (index < 0 || index >= static_cast<int>(hands_[player].size())) {
+        index = static_cast<int>(hands_[player].size()) - 1;
+    }
+    int discarded = hands_[player][index];
+    hands_[player].erase(hands_[player].begin() + index);
     discards_[player].push_back(discarded);
     last_tile_ = discarded;
     last_player_ = player;
+    last_claimed_ = false;
+    waiting_for_discard_ = false;
+    AdvanceAfterDiscardLocked(player);
+    return true;
+}
 
-    current_player_ = (current_player_ + 1) % 4;
+bool LocalGame::DrawForPlayerLocked(int player) {
+    if (wall_.empty()) return false;
+    int tile = wall_.back();
+    wall_.pop_back();
+    hands_[player].push_back(tile);
+    SortHandLocked(player);
+    return true;
+}
+
+void LocalGame::AdvanceAfterDiscardLocked(int player) {
+    current_player_ = (player + 1) % 4;
     if (current_player_ == my_seat_) {
         turn_++;
     }
-    return true;
+    if (demo_ && type_ == GameType::kMahjong) {
+        TryAutoClaimLocked(player, last_tile_);
+    }
 }
 
 bool LocalGame::active() const {
@@ -274,48 +529,115 @@ bool LocalGame::demo() const {
     return demo_;
 }
 
-int LocalGame::ChooseDiscardLocked(int player, int /*hand_size*/) const {
-    const auto& hand = hands_[player];
-    if (hand.empty()) {
-        return -1;
-    }
+int LocalGame::TargetHandSizeLocked(int player) const {
+    if (type_ == GameType::kPoker) return 5;
+    return 13 - 3 * static_cast<int>(melds_[player].size());
+}
+
+void LocalGame::SortHandLocked(int player) {
+    auto& hand = hands_[player];
     if (type_ == GameType::kPoker) {
-        int best = 0;
-        for (int i = 1; i < static_cast<int>(hand.size()); ++i) {
-            int rank_i = hand[i] % 13;
-            int rank_best = hand[best] % 13;
-            if (rank_i < rank_best) {
-                best = i;
+        std::sort(hand.begin(), hand.end(), IsPokerRankFirst);
+    } else {
+        std::sort(hand.begin(), hand.end());
+    }
+}
+
+bool LocalGame::SortHand(int player) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (player < 0 || player > 3) return false;
+    SortHandLocked(player);
+    return true;
+}
+
+bool LocalGame::SortMyHand() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    SortHandLocked(my_seat_);
+    return true;
+}
+
+int LocalGame::ChooseDiscardLocked(int player) const {
+    const auto& hand = hands_[player];
+    if (hand.empty()) return -1;
+    if (type_ == GameType::kPoker) {
+        return BestPokerDiscard(hand, nullptr);
+    }
+    return BestMahjongDiscard(hand, static_cast<int>(melds_[player].size()), nullptr);
+}
+
+bool LocalGame::CanClaimLocked(int player, int kind, int tile) const {
+    if (player < 0 || player > 3 || player == last_player_ || tile < 0) return false;
+    if (type_ != GameType::kMahjong) return false;
+    if (last_tile_ != tile || discards_[last_player_].empty()) return false;
+    if (discards_[last_player_].back() != tile) return false;
+    const auto& hand = hands_[player];
+    if (kind == 1) {
+        return std::count(hand.begin(), hand.end(), tile) >= 2;
+    }
+    std::array<int, 3> chi{};
+    return FindChiTiles(hand, tile, &chi);
+}
+
+bool LocalGame::ApplyClaimLocked(int player, int kind, int discarder, int tile) {
+    auto& hand = hands_[player];
+    auto& source = discards_[discarder];
+    if (source.empty() || source.back() != tile) return false;
+
+    std::array<int, 3> meld_tiles{};
+    if (kind == 1) {
+        int removed = 0;
+        for (int i = 0; i < static_cast<int>(hand.size()) && removed < 2;) {
+            if (hand[i] == tile) {
+                hand.erase(hand.begin() + i);
+                removed++;
+            } else {
+                i++;
             }
         }
-        return best;
+        if (removed != 2) return false;
+        meld_tiles = {tile, tile, tile};
+    } else {
+        std::array<int, 3> chi{};
+        if (!FindChiTiles(hand, tile, &chi)) return false;
+        for (int t : chi) {
+            if (t == tile) continue;
+            auto it = std::find(hand.begin(), hand.end(), t);
+            if (it == hand.end()) return false;
+            hand.erase(it);
+        }
+        meld_tiles = chi;
     }
 
-    int best = 0;
-    int best_score = 1000;
-    for (int i = 0; i < static_cast<int>(hand.size()); ++i) {
-        int tile = hand[i];
-        int same = 0;
-        int neighbor = 0;
-        int gap = 0;
-        for (int j = 0; j < static_cast<int>(hand.size()); ++j) {
-            if (i == j) continue;
-            int other = hand[j];
-            if (other == tile) {
-                same++;
-            } else if (tile < 27 && other < 27 && tile / 9 == other / 9) {
-                int distance = std::abs((tile % 9) - (other % 9));
-                if (distance == 1) neighbor++;
-                if (distance == 2) gap++;
+    source.pop_back();
+    melds_[player].push_back(Meld{kind, meld_tiles});
+    last_player_ = player;
+    last_tile_ = tile;
+    last_claimed_ = true;
+    current_player_ = player;
+    waiting_for_discard_ = true;
+    SortHandLocked(player);
+    return true;
+}
+
+bool LocalGame::TryAutoClaimLocked(int discarder, int tile) {
+    if (type_ != GameType::kMahjong || tile < 0) return false;
+    for (int offset = 1; offset < 4; ++offset) {
+        int player = (discarder + offset) % 4;
+        if (player == my_seat_) continue;  // 自己的吃碰交给触控/语音决定
+        if (CanClaimLocked(player, 1, tile)) {
+            if (ApplyClaimLocked(player, 1, discarder, tile)) {
+                ESP_LOGI(TAG, "seat %d peng %s", player, TileName(tile, false).c_str());
+                return true;
             }
         }
-        int score = same * 6 + neighbor * 3 + gap;
-        if (score < best_score) {
-            best_score = score;
-            best = i;
+        if (CanClaimLocked(player, 0, tile)) {
+            if (ApplyClaimLocked(player, 0, discarder, tile)) {
+                ESP_LOGI(TAG, "seat %d chi %s", player, TileName(tile, false).c_str());
+                return true;
+            }
         }
     }
-    return best;
+    return false;
 }
 
 bool LocalGame::SetHand(int player, const std::string& raw, std::string* error) {
@@ -353,13 +675,16 @@ bool LocalGame::SetHandLocked(int player, const std::string& raw, std::string* e
         return false;
     }
 
-    if (!active_) {
+    if (!active_ || type_ != GameType::kMahjong) {
         StartLocked(GameType::kMahjong, player, false);
     }
     type_ = GameType::kMahjong;
-    hands_[player] = std::move(parsed);
     my_seat_ = player;
+    hands_[player] = std::move(parsed);
+    SortHandLocked(player);
     current_player_ = player;
+    waiting_for_discard_ = hands_[player].size() > 13;
+    finished_ = false;
     ESP_LOGI(TAG, "hand set for seat %d, %d tiles", player,
              static_cast<int>(hands_[player].size()));
     return true;
@@ -380,7 +705,7 @@ bool LocalGame::RecordDiscardLocked(int player, const std::string& raw, std::str
         return false;
     }
     if (type_ == GameType::kPoker) {
-        if (error) *error = "扑克牌请直接在界面上自动记录。";
+        if (error) *error = "扑克牌请直接在界面上记录。";
         return false;
     }
     int tile = ParseMahjongTile(raw);
@@ -396,9 +721,94 @@ bool LocalGame::RecordDiscardLocked(int player, const std::string& raw, std::str
     discards_[player].push_back(tile);
     last_tile_ = tile;
     last_player_ = player;
-    current_player_ = (player + 1) % 4;
-    if (current_player_ == my_seat_) {
-        turn_++;
+    last_claimed_ = false;
+    waiting_for_discard_ = false;
+    AdvanceAfterDiscardLocked(player);
+    return true;
+}
+
+bool LocalGame::DiscardIndex(int player, int index, std::string* error) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return DiscardIndexLocked(player, index, error);
+}
+
+bool LocalGame::DiscardIndexLocked(int player, int index, std::string* error) {
+    if (!active_ || finished_) {
+        if (error) *error = "当前没有进行中的牌局。";
+        return false;
+    }
+    if (player < 0 || player > 3 || player != current_player_) {
+        if (error) *error = "还没轮到你出牌。";
+        return false;
+    }
+    auto& hand = hands_[player];
+    if (index < 0 || index >= static_cast<int>(hand.size())) {
+        if (error) *error = "手牌序号无效。";
+        return false;
+    }
+    int tile = hand[index];
+    hand.erase(hand.begin() + index);
+    discards_[player].push_back(tile);
+    last_tile_ = tile;
+    last_player_ = player;
+    last_claimed_ = false;
+    waiting_for_discard_ = false;
+    AdvanceAfterDiscardLocked(player);
+    return true;
+}
+
+bool LocalGame::DiscardTile(int player, const std::string& raw, std::string* error) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (!active_ || finished_) {
+        if (error) *error = "当前没有进行中的牌局。";
+        return false;
+    }
+    if (player < 0 || player > 3 || player != current_player_) {
+        if (error) *error = "还没轮到你出牌。";
+        return false;
+    }
+    int tile = ParseMahjongTile(raw);
+    if (tile < 0) {
+        if (error) *error = "不认识的牌：" + raw;
+        return false;
+    }
+    auto it = std::find(hands_[player].begin(), hands_[player].end(), tile);
+    if (it == hands_[player].end()) {
+        if (error) *error = "手里没有这张牌：" + raw;
+        return false;
+    }
+    int index = static_cast<int>(it - hands_[player].begin());
+    return DiscardIndexLocked(player, index, error);
+}
+
+bool LocalGame::Claim(int player, const std::string& kind, std::string* error) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return ClaimLocked(player, kind, error);
+}
+
+bool LocalGame::ClaimLocked(int player, const std::string& kind, std::string* error) {
+    if (!active_ || finished_ || type_ != GameType::kMahjong) {
+        if (error) *error = "当前没有可吃碰的麻将牌局。";
+        return false;
+    }
+    if (player < 0 || player > 3 || player == last_player_) {
+        if (error) *error = "这个座位不能吃碰。";
+        return false;
+    }
+    int claim_kind = 1;
+    if (kind == "chi" || kind == "吃" || kind == "吃牌") claim_kind = 0;
+    else if (kind == "peng" || kind == "碰" || kind == "碰牌") claim_kind = 1;
+    else {
+        if (error) *error = "只支持吃或碰。";
+        return false;
+    }
+    if (!CanClaimLocked(player, claim_kind, last_tile_)) {
+        if (error) *error = claim_kind == 1 ? "手牌不够碰。" : "手牌不能吃这张牌。";
+        return false;
+    }
+    if (!ApplyClaimLocked(player, claim_kind, last_player_, last_tile_)) {
+        if (error) *error = "吃碰失败。";
+        return false;
     }
     return true;
 }
@@ -413,6 +823,19 @@ GameView LocalGame::ViewFor(int seat) const {
     return ViewLocked(seat);
 }
 
+void LocalGame::BuildMeldsLocked(int player, PlayerView* out) const {
+    out->melds.clear();
+    out->meld_count = static_cast<int>(melds_[player].size());
+    for (const auto& meld : melds_[player]) {
+        std::string text = meld.kind == 1 ? "碰 " : "吃 ";
+        for (int i = 0; i < 3; ++i) {
+            if (i > 0) text += "-";
+            text += TileName(meld.tiles[i], false);
+        }
+        out->melds.push_back(text);
+    }
+}
+
 GameView LocalGame::ViewLocked(int seat) const {
     GameView view;
     view.active = active_;
@@ -424,6 +847,9 @@ GameView LocalGame::ViewLocked(int seat) const {
     view.wall_remaining = static_cast<int>(wall_.size());
     view.turn = turn_;
     view.my_turn = active_ && current_player_ == seat;
+    view.awaiting_discard = waiting_for_discard_;
+    view.can_discard = view.my_turn && !finished_ && waiting_for_discard_;
+    view.last_claimed = last_claimed_;
     view.last_discard_player = last_player_;
     if (last_tile_ >= 0) {
         view.last_discard = TileName(last_tile_, type_ == GameType::kPoker);
@@ -431,10 +857,11 @@ GameView LocalGame::ViewLocked(int seat) const {
     for (int i = 0; i < 4; ++i) {
         view.players[i].name = SeatName(i);
         view.players[i].hand_count = static_cast<int>(hands_[i].size());
-        view.players[i].discards = {};
+        view.players[i].discards.clear();
         for (int tile : discards_[i]) {
             view.players[i].discards.push_back(TileName(tile, type_ == GameType::kPoker));
         }
+        BuildMeldsLocked(i, &view.players[i]);
     }
     if (seat >= 0 && seat <= 3) {
         for (int tile : hands_[seat]) {
@@ -472,68 +899,70 @@ AdviceView LocalGame::AdviceLocked(int seat) const {
         return advice;
     }
 
-    int index = ChooseDiscardLocked(seat, static_cast<int>(hands_[seat].size()));
+    int index = -1;
+    int shanten = 0;
+    if (type_ == GameType::kPoker) {
+        index = BestPokerDiscard(hands_[seat], nullptr);
+    } else {
+        index = BestMahjongDiscard(hands_[seat],
+                                   static_cast<int>(melds_[seat].size()), &shanten);
+    }
     if (index < 0 || index >= static_cast<int>(hands_[seat].size())) {
         advice.action = "暂无建议";
         return advice;
     }
+    advice.discard_index = index;
     int tile = hands_[seat][index];
     std::string name = TileName(tile, type_ == GameType::kPoker);
+    advice.action = "建议打 " + name;
 
     if (type_ == GameType::kPoker) {
-        int pairs = 0;
-        for (int i = 0; i < static_cast<int>(hands_[seat].size()); ++i) {
-            for (int j = i + 1; j < static_cast<int>(hands_[seat].size()); ++j) {
-                if (hands_[seat][i] % 13 == hands_[seat][j] % 13) {
-                    pairs++;
-                }
-            }
+        std::vector<int> remain = hands_[seat];
+        remain.erase(remain.begin() + index);
+        int ranks[13] = {0};
+        int suits[4] = {0};
+        for (int card : remain) {
+            ranks[card % 13]++;
+            suits[card / 13]++;
         }
-        advice.action = "建议打 " + name;
-        advice.reason = "这张牌点数最小，先换掉它，保留大牌和对子。";
-        advice.meta = "5 张牌 · 对子 " + std::to_string(pairs);
+        int pairs = 0;
+        int trips = 0;
+        for (int count : ranks) {
+            if (count == 2) pairs++;
+            if (count == 3) trips++;
+        }
+        int flush = *std::max_element(suits, suits + 4);
+        advice.reason = "按成牌潜力保留对子/三条/同花/顺子，打掉最难成牌的一张。";
+        advice.meta = "5 张牌 · 对子 " + std::to_string(pairs) + " · 三条 " +
+                      std::to_string(trips) + " · 同花 " + std::to_string(flush);
         return advice;
     }
 
-    int pairs = 0;
-    int triplets = 0;
-    int kinds[kMahjongKinds] = {0};
-    for (int value : hands_[seat]) {
-        if (value >= 0 && value < kMahjongKinds) {
-            kinds[value]++;
-        }
-    }
-    for (int count : kinds) {
-        if (count >= 2) pairs++;
-        if (count >= 3) triplets++;
-    }
-    int shanten = 8 - pairs * 2 - triplets;
-    if (shanten < 0) shanten = 0;
-    if (shanten > 8) shanten = 8;
-
+    std::vector<int> remain = hands_[seat];
+    remain.erase(remain.begin() + index);
+    int counts[kMahjongKinds];
+    CountHand(remain, counts);
     int ukeire = 0;
-    for (int value : hands_[seat]) {
-        if (value >= 27) {
-            if (kinds[value] < 4) ukeire += 4 - kinds[value];
-            continue;
-        }
-        int suit = value / 9;
-        int rank = value % 9;
-        for (int delta = -2; delta <= 2; ++delta) {
-            int other_rank = rank + delta;
-            if (delta == 0 || other_rank < 0 || other_rank > 8) continue;
-            int other = suit * 9 + other_rank;
-            if (kinds[other] < 4) {
-                ukeire += 4 - kinds[other];
-            }
+    for (int t = 0; t < kMahjongKinds; ++t) {
+        if (counts[t] >= 4) continue;
+        counts[t]++;
+        int next = ShantenFromCounts(counts, static_cast<int>(melds_[seat].size()));
+        counts[t]--;
+        if (next < shanten) {
+            ukeire += 4 - counts[t];
         }
     }
-    if (ukeire > 99) ukeire = 99;
-
-    advice.action = "建议打 " + name;
-    advice.reason = "这张牌周围的搭子最少，先打孤张，保留两面搭子。";
-    advice.meta = "向听≈" + std::to_string(shanten) + " · 进张≈" +
-                  std::to_string(ukeire) + " 张";
+    if (shanten <= 0) {
+        advice.reason = "已经听牌：这张牌让向听数最低，优先保留进张最多的形状。";
+    } else if (shanten <= 2) {
+        advice.reason = "接近听牌：打掉孤立牌，保留两面搭子和对子。";
+    } else {
+        advice.reason = "向听偏远：先处理孤张，保留同一花色的连续牌。";
+    }
+    advice.meta = "向听 " + std::to_string(shanten) + " · 进张约 " +
+                  std::to_string(ukeire) + " 张" +
+                  (melds_[seat].empty() ? "" : " · 已副露 " +
+                       std::to_string(melds_[seat].size()));
     return advice;
 }
 
@@ -559,6 +988,14 @@ std::string LocalGame::StateTextLocked(int seat) const {
     }
     if (seat >= 0 && seat <= 3) {
         text += "我的手牌是：" + Join(hands_[seat], 14, type_ == GameType::kPoker) + "。";
+        if (!melds_[seat].empty()) {
+            text += "已副露：";
+            for (const auto& meld : melds_[seat]) {
+                text += meld.kind == 1 ? "碰" : "吃";
+                text += Join({meld.tiles[0], meld.tiles[1], meld.tiles[2]}, 3, false);
+                text += "；";
+            }
+        }
     }
     if (last_tile_ >= 0) {
         text += "最近出牌：" + std::string(SeatName(last_player_)) + "打了" +

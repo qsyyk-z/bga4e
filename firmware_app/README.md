@@ -58,6 +58,19 @@ main/model/card_cls_poker.cpp     # 扑克 52 类，int8
 > 当前固件是“单牌识别”：每次识别画面中央的一张牌。这样最稳，也避免在 S3 上跑检测网络。
 > 多牌检测可以后续接 `ColorDetector` 或把 YOLOv8n 检测头部署到 ESP-DL。
 
+### 串口 JSON 协议
+
+每次识别成功会输出一行（`CARD_RESULT` 后面是可直接解析的 JSON）：
+
+```text
+I (12345) CARD_RESULT: {"mode":"poker","rank":"K","suit":"H","conf":0.930,"box":[120,80,160,160]}
+I (12346) CARD_RESULT: {"mode":"mahjong","name":"五万","conf":0.910,"box":[120,80,160,160]}
+```
+
+- `box` 为 `[x, y, w, h]`，当前单牌识别是画面中央裁剪区域。
+- 麻将 `name` 用中文牌名；扑克 `rank` 为 `A/2..10/J/Q/K`，`suit` 为 `H/D/S/C`。
+- 台面每局一个文件由 PC 端 `backend/tools/camera_json_bridge.py` 完成；摄像头板本身没有 SD 卡槽。
+
 ---
 
 ## 4. 显示标签（ASCII）

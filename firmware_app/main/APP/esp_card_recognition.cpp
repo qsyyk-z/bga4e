@@ -35,6 +35,63 @@ static volatile int s_show_conf = 1; /* long press toggles */
 
 static const char *TAG = "card";
 
+static const char *card_mahjong_name(const char *code)
+{
+    static const char *ranks[] = {"一", "二", "三", "四", "五", "六", "七", "八", "九"};
+    if (code == NULL) return "未知";
+    if (code[0] >= '1' && code[0] <= '9' && code[1] != '\0')
+    {
+        int r = code[0] - '1';
+        if (code[1] == 'W') return ranks[r]; /* caller appends 万 */
+        if (code[1] == 'B') return ranks[r];
+        if (code[1] == 'P') return ranks[r];
+    }
+    if (strcmp(code, "EAST") == 0) return "东";
+    if (strcmp(code, "SOUTH") == 0) return "南";
+    if (strcmp(code, "WEST") == 0) return "西";
+    if (strcmp(code, "NORTH") == 0) return "北";
+    if (strcmp(code, "RED") == 0) return "中";
+    if (strcmp(code, "GREEN") == 0) return "发";
+    if (strcmp(code, "WHITE") == 0) return "白";
+    if (strcmp(code, "PLUM") == 0) return "梅";
+    if (strcmp(code, "ORCHID") == 0) return "兰";
+    if (strcmp(code, "BAMBOO") == 0) return "竹";
+    if (strcmp(code, "CHRYS") == 0) return "菊";
+    if (strcmp(code, "SPRING") == 0) return "春";
+    if (strcmp(code, "SUMMER") == 0) return "夏";
+    if (strcmp(code, "AUTUMN") == 0) return "秋";
+    if (strcmp(code, "WINTER") == 0) return "冬";
+    return "未知";
+}
+
+/* 1W -> 一万, 5B -> 五条, 9P -> 九筒; 字牌直接返回中文。 */
+static void card_mahjong_full_name(const char *code, char *out, size_t out_size)
+{
+    const char *base = card_mahjong_name(code);
+    snprintf(out, out_size, "%s", base);
+    if (code != NULL && code[0] >= '1' && code[0] <= '9' && code[1] != '\0')
+    {
+        const char *suffix = code[1] == 'W' ? "万" : (code[1] == 'B' ? "条" : "筒");
+        snprintf(out, out_size, "%s%s", base, suffix);
+    }
+}
+
+static void card_poker_rank_suit(const char *code, char *rank, size_t rank_size, char *suit)
+{
+    size_t len = code ? strlen(code) : 0;
+    if (len < 2)
+    {
+        snprintf(rank, rank_size, "?");
+        *suit = '?';
+        return;
+    }
+    *suit = code[len - 1];
+    size_t n = len - 1;
+    if (n >= rank_size) n = rank_size - 1;
+    memcpy(rank, code, n);
+    rank[n] = '\0';
+}
+
 /**
  * @brief 摄像头采集任务：把 frame 指针送入队列，不拷贝图像。
  */
@@ -198,13 +255,29 @@ static void card_ai_task(void *arg)
         }
         float conf = 1.0f / sum;
 
-        /* 串口桥接用：每帧输出一行 JSON，PC 端 tools/serial_bridge.py 读取后上报后端 */
-        ESP_LOGI("CARD_RESULT", "{\"mode\":\"%s\",\"tile\":\"%s\",\"conf\":%.3f}",
-                 s_mode ? "poker" : "mahjong", names[best], conf);
-
         int side = (width < height ? width : height) * 4 / 5;
         int x0 = (width - side) / 2;
         int y0 = (height - side) / 2;
+
+        /* 串口协议：每帧一行 JSON，PC 端 tools/serial_bridge.py 可直接写入
+           <game>/cards.jsonl。麻将字段 name，扑克字段 rank/suit，box 为裁剪框。 */
+        if (s_mode)
+        {
+            char rank[8];
+            char suit = '?';
+            card_poker_rank_suit(names[best], rank, sizeof(rank), &suit);
+            ESP_LOGI("CARD_RESULT",
+                     "{\"mode\":\"poker\",\"rank\":\"%s\",\"suit\":\"%c\",\"conf\":%.3f,\"box\":[%d,%d,%d,%d]}",
+                     rank, suit, conf, x0, y0, side, side);
+        }
+        else
+        {
+            char mj_name[24];
+            card_mahjong_full_name(names[best], mj_name, sizeof(mj_name));
+            ESP_LOGI("CARD_RESULT",
+                     "{\"mode\":\"mahjong\",\"name\":\"%s\",\"conf\":%.3f,\"box\":[%d,%d,%d,%d]}",
+                     mj_name, conf, x0, y0, side, side);
+        }
         dl::image::draw_hollow_rectangle((uint16_t *)frame->buf, height, width,
                                          x0, y0, x0 + side, y0 + side, CARD_COLOR_GREEN);
 

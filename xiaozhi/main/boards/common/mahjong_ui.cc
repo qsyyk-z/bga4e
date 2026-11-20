@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "display.h"
+#include "camera_cards.h"
 #include "local_game.h"
 
 #define TAG "MahjongUi"
@@ -92,18 +93,12 @@ lv_obj_t* MakeTile(lv_obj_t* parent, const std::string& name, bool poker) {
     return tile;
 }
 
-std::string JoinDiscards(const std::vector<std::string>& names, int limit) {
-    std::string out;
-    for (int i = 0; i < static_cast<int>(names.size()) && i < limit; ++i) {
-        if (!out.empty()) {
-            out += "、";
-        }
-        out += names[i];
-    }
-    if (static_cast<int>(names.size()) > limit) {
-        out += "…";
-    }
-    return out;
+lv_obj_t* MakeHandTile(lv_obj_t* parent, const std::string& name, bool poker) {
+    lv_obj_t* tile = MakeTile(parent, name, poker);
+    lv_obj_add_flag(tile, LV_OBJ_FLAG_CLICKABLE);
+    // 让点在小字上的触摸也冒泡到牌块，统一由牌块处理出牌。
+    lv_obj_add_flag(lv_obj_get_child(tile, 0), LV_OBJ_FLAG_EVENT_BUBBLE);
+    return tile;
 }
 
 void StyleScreen(lv_obj_t* screen) {
@@ -205,7 +200,7 @@ private:
 
         menu_status_ = MakeLabel(menu_screen_, "选择一种方式开始。\n演示模式会自动生成手牌并自动摸打。",
                                  &font_puhui_20_4, COLOR_INK, 76, 306, 650);
-        MakeLabel(menu_screen_, "提示：点右侧“语音”可以和小智说话。\\n"
+        MakeLabel(menu_screen_, "提示：点右侧“语音”可以和小智说话。\n"
                                 "4.3C 的 BOOT 键与屏幕数据脚复用，不能当功能键。",
                   &font_puhui_20_4, COLOR_MUTED, 76, 378, 650);
         // 不要放在 (680,22)：聊天页的“牌局”按钮在 (700,36,84,36)，
@@ -269,12 +264,13 @@ private:
 
         ready_hint_ = MakeLabel(ready_screen_,
                                 "请通过摄像头读入手牌；\n"
+                                "把摄像头 JSON 放到 TF 卡 bga4e/cards.json，点“SD读牌”；\n"
                                 "也可以点“语音”对小智报牌，例如：\n"
-                                "“我手里有一万、二万、三条……”\n"
-                                "读完点“读入完成”进入牌局。",
+                                "“我手里有一万、二万、三条……”",
                                 &font_puhui_20_4, COLOR_INK, 70, 116, 660);
         MakeButton(ready_screen_, "读入完成", 220, 336, 190, 64, OnHandReady, this);
-        MakeButton(ready_screen_, "返回设置", 440, 336, 160, 64, OnBackSetup, this);
+        MakeButton(ready_screen_, "SD读牌", 420, 336, 160, 64, OnSdRead, this);
+        MakeButton(ready_screen_, "返回设置", 590, 336, 160, 64, OnBackSetup, this);
     }
 
     void CreateGame() {
@@ -290,26 +286,46 @@ private:
         lv_obj_set_style_border_width(top, 0, 0);
         lv_obj_remove_flag(top, LV_OBJ_FLAG_SCROLLABLE);
         game_title_ = MakeLabel(top, "离线牌局", &font_puhui_30_4, COLOR_GOLD, 18, 10);
-        game_status_ = MakeLabel(top, "准备中", &font_puhui_20_4, 0xD7E6DC, 310, 18, 190);
+        game_status_ = MakeLabel(top, "准备中", &font_puhui_20_4, 0xD7E6DC, 300, 18, 190);
 
-        MakeButton(top, "建议", 540, 11, 72, 36, OnAdvice, this);
-        MakeButton(top, "语音", 620, 11, 72, 36, OnChat, this);
-        MakeButton(top, "菜单", 700, 11, 84, 36, OnMenu, this);
+        MakeButton(top, "建议", 500, 11, 66, 36, OnAdvice, this);
+        MakeButton(top, "理牌", 570, 11, 66, 36, OnSort, this);
+        MakeButton(top, "语音", 640, 11, 66, 36, OnChat, this);
+        MakeButton(top, "菜单", 710, 11, 80, 36, OnMenu, this);
 
         lv_obj_t* info = MakePanel(game_screen_, 12, 70, 500, 58);
         turn_label_ = MakeLabel(info, "当前：— · 牌墙 —", &font_puhui_20_4,
-                                COLOR_INK, 14, 14, 470);
+                                COLOR_INK, 14, 8, 470);
+        hint_label_ = MakeLabel(info, "", &font_puhui_20_4, COLOR_MUTED, 14, 32, 470);
 
-        lv_obj_t* players = MakePanel(game_screen_, 12, 138, 500, 182);
-        MakeLabel(players, "各家弃牌", &font_puhui_20_4, COLOR_MUTED, 14, 8);
+        lv_obj_t* players = MakePanel(game_screen_, 12, 138, 500, 190);
+        MakeLabel(players, "弃牌区（最近 10 张）", &font_puhui_20_4, COLOR_MUTED, 14, 4);
         for (int i = 0; i < 4; ++i) {
-            player_labels_[i] = MakeLabel(players, "", &font_puhui_20_4, COLOR_INK,
-                                          14, 38 + i * 34, 470);
+            discard_names_[i] = MakeLabel(players, "", &font_puhui_20_4, COLOR_INK,
+                                          4, 32 + i * 37, 62);
+            for (int j = 0; j < 10; ++j) {
+                lv_obj_t* cell = lv_obj_create(players);
+                lv_obj_set_pos(cell, 68 + j * 42, 30 + i * 37);
+                lv_obj_set_size(cell, 40, 30);
+                lv_obj_set_style_bg_color(cell, lv_color_hex(0xEFE8DA), 0);
+                lv_obj_set_style_bg_opa(cell, LV_OPA_COVER, 0);
+                lv_obj_set_style_border_color(cell, lv_color_hex(0xD8CDB9), 0);
+                lv_obj_set_style_border_width(cell, 1, 0);
+                lv_obj_set_style_radius(cell, 4, 0);
+                lv_obj_set_style_pad_all(cell, 0, 0);
+                lv_obj_remove_flag(cell, LV_OBJ_FLAG_SCROLLABLE);
+                discard_cells_[i][j] = cell;
+                discard_cell_labels_[i][j] = MakeLabel(cell, "", &font_puhui_20_4,
+                                                       COLOR_INK, 0, 4);
+                lv_obj_set_width(discard_cell_labels_[i][j], 40);
+                lv_obj_set_style_text_align(discard_cell_labels_[i][j],
+                                            LV_TEXT_ALIGN_CENTER, 0);
+            }
         }
 
-        lv_obj_t* last = MakePanel(game_screen_, 12, 330, 500, 68);
-        MakeLabel(last, "最近出牌", &font_puhui_20_4, COLOR_MUTED, 14, 8);
-        last_label_ = MakeLabel(last, "—", &font_puhui_30_4, COLOR_RED, 150, 16, 330);
+        lv_obj_t* last = MakePanel(game_screen_, 12, 334, 500, 64);
+        MakeLabel(last, "最近出牌", &font_puhui_20_4, COLOR_MUTED, 14, 6);
+        last_label_ = MakeLabel(last, "—", &font_puhui_30_4, COLOR_RED, 150, 12, 330);
 
         lv_obj_t* advice = MakePanel(game_screen_, 524, 70, 264, 328);
         MakeLabel(advice, "策略建议", &font_puhui_20_4, COLOR_MUTED, 14, 10);
@@ -379,6 +395,8 @@ private:
         if (!view.active) {
             lv_label_set_text(game_title_, "离线牌局");
             lv_label_set_text(game_status_, "未开始");
+            lv_label_set_text(turn_label_, "当前：— · 牌墙 —");
+            lv_label_set_text(hint_label_, "");
             return;
         }
 
@@ -396,34 +414,57 @@ private:
         }
         lv_label_set_text(game_status_, status);
 
-        char turn[160];
-        snprintf(turn, sizeof(turn), "当前：%s%s · 你：%s",
-                 view.current_name.c_str(), view.my_turn ? "（你的回合）" : "",
-                 LocalGame::SeatName(view.my_seat));
+        char turn[180];
+        if (view.can_discard) {
+            snprintf(turn, sizeof(turn), "当前：%s（你）· 请点手牌出牌",
+                     view.current_name.c_str());
+        } else if (view.my_turn) {
+            snprintf(turn, sizeof(turn), "当前：%s（你）· 等待摸牌/读牌",
+                     view.current_name.c_str());
+        } else {
+            snprintf(turn, sizeof(turn), "当前：%s · 你：%s", view.current_name.c_str(),
+                     LocalGame::SeatName(view.my_seat));
+        }
         lv_label_set_text(turn_label_, turn);
+        lv_label_set_text(hint_label_, view.finished ? "本局结束，点“菜单”重新开始" : "");
 
         if (view.last_discard.empty()) {
             lv_label_set_text(last_label_, "—");
         } else {
-            char last[100];
-            snprintf(last, sizeof(last), "%s：%s",
+            char last[120];
+            snprintf(last, sizeof(last), "%s：%s%s",
                      LocalGame::SeatName(view.last_discard_player),
-                     view.last_discard.c_str());
+                     view.last_discard.c_str(), view.last_claimed ? "（已吃碰）" : "");
             lv_label_set_text(last_label_, last);
         }
 
         lv_obj_clean(hand_row_);
         for (const auto& name : view.my_hand) {
-            MakeTile(hand_row_, name, view.type == GameType::kPoker);
+            lv_obj_t* tile = MakeHandTile(hand_row_, name, view.type == GameType::kPoker);
+            lv_obj_add_event_cb(tile, OnTileClicked, LV_EVENT_CLICKED, this);
         }
 
         for (int i = 0; i < 4; ++i) {
-            std::string discards = JoinDiscards(view.players[i].discards, 7);
-            char line[240];
-            snprintf(line, sizeof(line), "%s(%d)：%s", view.players[i].name.c_str(),
-                     view.players[i].hand_count,
-                     discards.empty() ? "—" : discards.c_str());
-            lv_label_set_text(player_labels_[i], line);
+            char name[24];
+            snprintf(name, sizeof(name), "%s%d", view.players[i].name.c_str(),
+                     view.players[i].hand_count);
+            lv_label_set_text(discard_names_[i], name);
+            const auto& discards = view.players[i].discards;
+            int start = std::max(0, static_cast<int>(discards.size()) - 10);
+            for (int j = 0; j < 10; ++j) {
+                int index = start + j;
+                lv_obj_t* cell = discard_cells_[i][j];
+                lv_obj_t* label = discard_cell_labels_[i][j];
+                if (index < static_cast<int>(discards.size())) {
+                    lv_label_set_text(label, discards[index].c_str());
+                    lv_obj_set_style_bg_color(cell, lv_color_white(), 0);
+                    lv_obj_set_style_border_color(cell, lv_color_hex(0xC8B89B), 0);
+                } else {
+                    lv_label_set_text(label, "");
+                    lv_obj_set_style_bg_color(cell, lv_color_hex(0xEFE8DA), 0);
+                    lv_obj_set_style_border_color(cell, lv_color_hex(0xE0D6C5), 0);
+                }
+            }
         }
         UpdateAdviceLocked();
     }
@@ -435,6 +476,30 @@ private:
         lv_label_set_text(advice_meta_, advice.meta.c_str());
     }
 
+    static void OnTileClicked(lv_event_t* e) {
+        auto* self = static_cast<MahjongUiImpl*>(lv_event_get_user_data(e));
+        // 事件从牌面文字冒泡到牌块，current_target 才是注册回调的牌块；
+        // 用 target 会取到文字子对象，index 恒为 0。
+        lv_obj_t* target = static_cast<lv_obj_t*>(lv_event_get_current_target(e));
+        int index = lv_obj_get_index(target);
+        std::string error;
+        bool ok = LocalGame::Instance().DiscardIndex(
+            LocalGame::Instance().my_seat(), index, &error);
+        DisplayLockGuard lock(self->display_);
+        if (!ok) {
+            lv_label_set_text(self->hint_label_, error.c_str());
+            return;
+        }
+        self->UpdateGameLocked();
+    }
+
+    static void OnSort(lv_event_t* e) {
+        auto* self = static_cast<MahjongUiImpl*>(lv_event_get_user_data(e));
+        LocalGame::Instance().SortMyHand();
+        DisplayLockGuard lock(self->display_);
+        self->UpdateGameLocked();
+    }
+
     void TaskLoop() {
         while (true) {
             bool active = LocalGame::Instance().active();
@@ -442,6 +507,12 @@ private:
             bool changed = false;
             if (active && demo) {
                 changed = LocalGame::Instance().Tick();
+            } else if (active) {
+                // 正式模式只帮玩家摸牌，不替他出牌；出牌必须由触控或语音确认。
+                GameView view = LocalGame::Instance().View();
+                if (view.my_turn && !view.awaiting_discard && !view.finished) {
+                    changed = LocalGame::Instance().DrawForMe();
+                }
             }
             // 演示模式自动摸打；正式模式等待摄像头/语音通过 MCP 更新，
             // 这里定时刷新，保证语音录入的牌能马上显示出来。
@@ -514,6 +585,30 @@ private:
             self->LoadScreen(self->ready_screen_);
         }
     }
+    static void OnSdRead(lv_event_t* e) {
+        auto* self = static_cast<MahjongUiImpl*>(lv_event_get_user_data(e));
+        std::vector<std::string> tiles;
+        std::string error;
+        if (!CameraCards::Instance().LoadMahjongHand(&tiles, &error)) {
+            DisplayLockGuard lock(self->display_);
+            if (self->ready_hint_ != nullptr) lv_label_set_text(self->ready_hint_, error.c_str());
+            return;
+        }
+        std::string raw;
+        for (size_t i = 0; i < tiles.size(); ++i) {
+            if (i != 0) raw += ",";
+            raw += tiles[i];
+        }
+        if (!LocalGame::Instance().SetHand(LocalGame::Instance().my_seat(), raw, &error)) {
+            DisplayLockGuard lock(self->display_);
+            if (self->ready_hint_ != nullptr) {
+                lv_label_set_text(self->ready_hint_, ("读牌失败：" + error).c_str());
+            }
+            return;
+        }
+        self->ShowGame();
+    }
+
     static void OnHandReady(lv_event_t* e) {
         auto* self = static_cast<MahjongUiImpl*>(lv_event_get_user_data(e));
         if (LocalGame::Instance().active() &&
@@ -576,9 +671,12 @@ private:
     lv_obj_t* game_title_ = nullptr;
     lv_obj_t* game_status_ = nullptr;
     lv_obj_t* turn_label_ = nullptr;
+    lv_obj_t* hint_label_ = nullptr;
     lv_obj_t* last_label_ = nullptr;
     lv_obj_t* hand_row_ = nullptr;
-    lv_obj_t* player_labels_[4] = {};
+    lv_obj_t* discard_names_[4] = {};
+    lv_obj_t* discard_cells_[4][10] = {};
+    lv_obj_t* discard_cell_labels_[4][10] = {};
     lv_obj_t* advice_action_ = nullptr;
     lv_obj_t* advice_reason_ = nullptr;
     lv_obj_t* advice_meta_ = nullptr;
