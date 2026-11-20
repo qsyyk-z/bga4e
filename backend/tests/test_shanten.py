@@ -1,5 +1,5 @@
 from app.shanten import analyze_hand, best_discards, shanten, ukeire
-from app.tiles import hand_counts, notation_to_tiles, tile_name
+from app.tiles import hand_counts, normalize_tile, notation_to_tiles, tile_name
 
 
 def test_notation():
@@ -8,6 +8,9 @@ def test_notation():
     assert tile_name("1B") == "一条"
     assert tile_name("EA") == "东"
     assert tile_name("PLUM") == "梅"
+    assert normalize_tile("红中") == "CE"
+    assert normalize_tile("幺鸡") == "1B"
+    assert normalize_tile("一饼") == "1P"
 
 
 def test_winning_hand():

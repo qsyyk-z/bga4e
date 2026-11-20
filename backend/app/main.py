@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 
 from . import advisor, config, db, game
 from .schemas import AdviceIn, DemoCreate, EventIn, GameCreate, HandIn, RecognitionIn
-from .tiles import TILE_ORDER, all_tiles_meta, normalize_tile, tile_meta
+from .tiles import TILE_ORDER, all_tiles_meta, normalize_tile, tile_meta, tile_name
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 STATIC_DIR = BASE_DIR / "static"
@@ -162,6 +162,89 @@ async def meta_tiles() -> dict:
 @app.get("/api/games")
 async def list_games() -> list[dict]:
     return [game.game_summary(row) for row in db.list_games()]
+
+
+def _latest_game() -> tuple[Any, dict]:
+    rows = db.list_games()
+    if not rows:
+        raise HTTPException(status_code=404, detail="还没有牌局，请先在网页新建")
+    return _load(rows[0]["id"])
+
+
+def _current_summary(player: int) -> dict:
+    row, state = _latest_game()
+    if player not in range(4):
+        raise HTTPException(status_code=400, detail="player 必须是 0-3")
+    p = state["players"][player]
+    last = state.get("last_discard")
+    return {
+        "game_id": row["id"],
+        "name": row["name"],
+        "status": state.get("status"),
+        "turn": state.get("turn"),
+        "wall_remaining": state.get("wall_remaining"),
+        "current_player": state.get("current_player"),
+        "current_name": state["players"][state.get("current_player", 0)]["name"],
+        "my_player": player,
+        "my_name": p["name"],
+        "my_hand": p.get("hand", []),
+        "my_hand_names": [tile_name(t) for t in p.get("hand", [])],
+        "my_melds": p.get("melds", []),
+        "my_discards": p.get("discards", []),
+        "my_discard_names": [tile_name(t) for t in p.get("discards", [])],
+        "players": [
+            {
+                "seat": q["seat"],
+                "name": q["name"],
+                "wind": q["wind"],
+                "hand_count": len(q.get("hand", [])),
+                "melds": len(q.get("melds", [])),
+                "discards": q.get("discards", []),
+                "discard_names": [tile_name(t) for t in q.get("discards", [])],
+                "score": q.get("score"),
+            }
+            for q in state["players"]
+        ],
+        "last_discard": (
+            {"player": last["player"], "tile": last["tile"], "name": tile_name(last["tile"])}
+            if last else None
+        ),
+        "legal_actions": game.legal_actions(state, player),
+    }
+
+
+@app.get("/api/current/game")
+async def current_game() -> dict:
+    row, state = _latest_game()
+    return _game_payload(row, state)
+
+
+@app.get("/api/current/summary")
+async def current_summary(player: int = 0) -> dict:
+    return _current_summary(player)
+
+
+@app.post("/api/current/advice")
+async def current_advice(body: AdviceIn) -> dict:
+    row, state = _latest_game()
+    player = body.player if body.player is not None else state.get("current_player", 0)
+    if player not in range(4):
+        raise HTTPException(status_code=400, detail="player 必须是 0-3")
+    result = await advisor.get_advice(state, player, body.use_llm, row["id"])
+    return {"game_id": row["id"], **result}
+
+
+@app.post("/api/current/events")
+async def current_event(body: EventIn) -> dict:
+    row, _ = _latest_game()
+    payload = await post_event(row["id"], body)
+    return payload
+
+
+@app.post("/api/current/hands/{player}")
+async def current_set_hand(player: int, body: HandIn) -> dict:
+    row, _ = _latest_game()
+    return await set_hand(row["id"], player, body)
 
 
 @app.post("/api/games")

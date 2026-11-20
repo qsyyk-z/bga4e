@@ -73,6 +73,30 @@ def test_observer_mode_and_manual_hand(client):
     assert r.json()["action"] == "draw"
 
 
+def test_current_endpoints_for_voice(client):
+    g = client.post("/api/games", json={"deal": True, "seed": 11}).json()
+    gid = g["id"]
+    summary = client.get("/api/current/summary?player=0")
+    assert summary.status_code == 200
+    s = summary.json()
+    assert s["game_id"] == gid
+    assert s["my_player"] == 0
+    assert len(s["my_hand"]) == 13
+
+    r = client.post("/api/current/advice", json={"player": 0, "use_llm": False})
+    assert r.status_code == 200
+    assert r.json()["provider"] == "rule"
+
+    r = client.post("/api/current/hands/0", json={
+        "tiles": ["1W", "2W", "3W", "4W", "5W", "6W", "7W", "8W",
+                  "9W", "1B", "2B", "3B", "4B", "5B"],
+    })
+    assert r.status_code == 200
+    r = client.post("/api/current/advice", json={"player": 0, "use_llm": False})
+    assert r.status_code == 200
+    assert r.json()["action"] in ("discard", "win")
+
+
 def test_recognition_and_demo(client):
     g = client.post("/api/games", json={"deal": True, "seed": 3}).json()
     gid = g["id"]
