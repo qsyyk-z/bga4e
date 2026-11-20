@@ -126,7 +126,21 @@ public:
         CreateReady();
         CreateGame();
         CreateChatReturnButton();
-        lv_screen_load(menu_screen_);
+        LoadScreen(menu_screen_);
+        ESP_LOGI(TAG, "init active screen: %s", ScreenName(lv_screen_active()));
+
+        // 有些情况下 LVGL 初始化末尾会把默认屏幕重新置顶，启动后
+        // 再补一次，确保用户第一眼看到的是牌局菜单而不是小智聊天页。
+        lv_timer_t* boot_timer = lv_timer_create([](lv_timer_t* timer) {
+            auto* self = static_cast<MahjongUiImpl*>(lv_timer_get_user_data(timer));
+            if (lv_screen_active() == self->chat_screen_ &&
+                !LocalGame::Instance().active()) {
+                self->LoadScreen(self->menu_screen_);
+                ESP_LOGW(TAG, "boot screen was chat; menu restored");
+            }
+            lv_timer_delete(timer);
+        }, 700, this);
+        lv_timer_set_repeat_count(boot_timer, 1);
     }
 
     void StartTask() {
@@ -139,17 +153,38 @@ public:
         DisplayLockGuard lock(display_);
         if (lv_screen_active() == chat_screen_) {
             if (LocalGame::Instance().active()) {
-                lv_screen_load(game_screen_);
+                LoadScreen(game_screen_);
                 UpdateGameLocked();
             } else {
-                lv_screen_load(menu_screen_);
+                LoadScreen(menu_screen_);
             }
         } else {
-            lv_screen_load(chat_screen_);
+            LoadScreen(chat_screen_);
         }
     }
 
 private:
+    const char* ScreenName(lv_obj_t* screen) const {
+        if (screen == chat_screen_) return "chat";
+        if (screen == menu_screen_) return "menu";
+        if (screen == setup_screen_) return "setup";
+        if (screen == ready_screen_) return "ready";
+        if (screen == game_screen_) return "game";
+        return "unknown";
+    }
+
+    void LoadScreen(lv_obj_t* screen) {
+        lv_screen_load(screen);
+        // 关键：切换屏幕时吞掉当前这次触摸的抬起事件。
+        // 否则手指还停在原坐标，新屏幕同位置的按钮会立刻收到一次点击，
+        // 表现为“刚进入主界面又马上跳回聊天页”。
+        lv_indev_t* indev = lv_indev_active();
+        if (indev != nullptr) {
+            lv_indev_wait_release(indev);
+        }
+        ESP_LOGI(TAG, "screen -> %s", ScreenName(screen));
+    }
+
     void CreateMenu() {
         menu_screen_ = lv_obj_create(NULL);
         StyleScreen(menu_screen_);
@@ -170,9 +205,12 @@ private:
 
         menu_status_ = MakeLabel(menu_screen_, "选择一种方式开始。\n演示模式会自动生成手牌并自动摸打。",
                                  &font_puhui_20_4, COLOR_INK, 76, 306, 650);
-        MakeLabel(menu_screen_, "提示：点击右上角“语音”或短按 BOOT 可以和小智说话。",
-                  &font_puhui_20_4, COLOR_MUTED, 76, 390, 650);
-        MakeButton(menu_screen_, "语音", 680, 22, 90, 44, OnChat, this);
+        MakeLabel(menu_screen_, "提示：点右侧“语音”可以和小智说话。\\n"
+                                "4.3C 的 BOOT 键与屏幕数据脚复用，不能当功能键。",
+                  &font_puhui_20_4, COLOR_MUTED, 76, 378, 650);
+        // 不要放在 (680,22)：聊天页的“牌局”按钮在 (700,36,84,36)，
+        // 两块触摸区域重叠会在切屏瞬间被同一次抬手误触。
+        MakeButton(menu_screen_, "语音", 680, 100, 90, 44, OnChat, this);
     }
 
     void CreateSetup() {
@@ -188,6 +226,7 @@ private:
         lv_obj_set_style_border_width(top, 0, 0);
         lv_obj_remove_flag(top, LV_OBJ_FLAG_SCROLLABLE);
         MakeLabel(top, "开始牌局", &font_puhui_30_4, COLOR_GOLD, 24, 14);
+        MakeButton(top, "语音", 576, 14, 84, 42, OnChat, this);
         MakeButton(top, "返回", 680, 14, 90, 42, OnMenu, this);
 
         MakeLabel(setup_screen_, "游戏类型", &font_puhui_20_4, COLOR_MUTED, 80, 104);
@@ -321,14 +360,14 @@ private:
 
     void ShowGame() {
         DisplayLockGuard lock(display_);
-        lv_screen_load(game_screen_);
+        LoadScreen(game_screen_);
         UpdateGameLocked();
     }
 
     void StartSelected(bool demo, bool skip_ready) {
         if (selected_type_ == GameType::kMahjong && !skip_ready) {
             DisplayLockGuard lock(display_);
-            lv_screen_load(ready_screen_);
+            LoadScreen(ready_screen_);
             return;
         }
         LocalGame::Instance().Start(selected_type_, selected_seat_, demo);
@@ -410,7 +449,7 @@ private:
                 DisplayLockGuard lock(display_);
                 if (lv_screen_active() == ready_screen_) {
                     // 语音/摄像头已经通过 MCP 录入 13 张手牌，自动进牌局。
-                    lv_screen_load(game_screen_);
+                    LoadScreen(game_screen_);
                     UpdateGameLocked();
                 } else if (lv_screen_active() == game_screen_) {
                     UpdateGameLocked();
@@ -423,7 +462,7 @@ private:
     static void OnOpenSetup(lv_event_t* e) {
         auto* self = static_cast<MahjongUiImpl*>(lv_event_get_user_data(e));
         DisplayLockGuard lock(self->display_);
-        lv_screen_load(self->setup_screen_);
+        self->LoadScreen(self->setup_screen_);
     }
     static void OnDemo(lv_event_t* e) {
         auto* self = static_cast<MahjongUiImpl*>(lv_event_get_user_data(e));
@@ -472,7 +511,7 @@ private:
             self->StartSelected(false, true);
         } else {
             DisplayLockGuard lock(self->display_);
-            lv_screen_load(self->ready_screen_);
+            self->LoadScreen(self->ready_screen_);
         }
     }
     static void OnHandReady(lv_event_t* e) {
@@ -495,13 +534,13 @@ private:
     static void OnBackSetup(lv_event_t* e) {
         auto* self = static_cast<MahjongUiImpl*>(lv_event_get_user_data(e));
         DisplayLockGuard lock(self->display_);
-        lv_screen_load(self->setup_screen_);
+        self->LoadScreen(self->setup_screen_);
     }
     static void OnMenu(lv_event_t* e) {
         auto* self = static_cast<MahjongUiImpl*>(lv_event_get_user_data(e));
         LocalGame::Instance().Stop();
         DisplayLockGuard lock(self->display_);
-        lv_screen_load(self->menu_screen_);
+        self->LoadScreen(self->menu_screen_);
     }
     static void OnAdvice(lv_event_t* e) {
         auto* self = static_cast<MahjongUiImpl*>(lv_event_get_user_data(e));
@@ -511,16 +550,16 @@ private:
     static void OnChat(lv_event_t* e) {
         auto* self = static_cast<MahjongUiImpl*>(lv_event_get_user_data(e));
         DisplayLockGuard lock(self->display_);
-        lv_screen_load(self->chat_screen_);
+        self->LoadScreen(self->chat_screen_);
     }
     static void OnShowGame(lv_event_t* e) {
         auto* self = static_cast<MahjongUiImpl*>(lv_event_get_user_data(e));
         DisplayLockGuard lock(self->display_);
         if (LocalGame::Instance().active()) {
-            lv_screen_load(self->game_screen_);
+            self->LoadScreen(self->game_screen_);
             self->UpdateGameLocked();
         } else {
-            lv_screen_load(self->menu_screen_);
+            self->LoadScreen(self->menu_screen_);
         }
     }
 

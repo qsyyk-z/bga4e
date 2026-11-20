@@ -251,8 +251,7 @@ private:
     }
 
 public:
-    WaveshareEsp32s3TouchLCD43c()
-        : button_(BOOT_BUTTON_GPIO) {
+    WaveshareEsp32s3TouchLCD43c() {
         InitializePowerSaveTimer();
         InitializeGpio();
         InitializeCodecI2c();
@@ -262,9 +261,6 @@ public:
         InitializeTools();
 
         MahjongUi::Init(display_);
-        button_.OnClick([]() {
-            MahjongUi::Toggle();
-        });
         GetBacklight()->SetBrightness(100);
     }
 
@@ -289,7 +285,6 @@ public:
     }
 
 private:
-    Button button_;
 };
 
 DECLARE_BOARD(WaveshareEsp32s3TouchLCD43c);
