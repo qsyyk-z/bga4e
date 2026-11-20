@@ -53,7 +53,7 @@ cd M08\bga4e\backend
 
 设备端显示固件已经完整收进 [`xiaozhi/`](xiaozhi/)，可直接用 ESP-IDF 5.4.4 编译；小智通过 MCP 工具调用后端的 `get_state/get_advice/set_hand/record_discard`，由小智的 LLM 负责说话、后端负责算牌。
 
-另外已适配 **ESP32-S3-Touch-LCD-4.3C（800×480）**：新增板级 RGB 屏/GT911 触摸/CH32V003 IO 扩展代码和 `mahjong_ui.cc` LVGL 界面，把当前牌局、四家弃牌、手牌和策略建议直接显示在开发板上。用 ESP-IDF 5.4.4 实测编译通过，bin `0x5defc0`，7M app 分区剩余 16%。
+另外已适配 **ESP32-S3-Touch-LCD-4.3C（800×480）**：新增板级 RGB 屏/GT911 触摸/CH32V003 IO 扩展代码和 `mahjong_ui.cc` LVGL 界面，把当前牌局、四家弃牌、手牌和策略建议直接显示在开发板上。用 ESP-IDF 5.4.4 实测编译通过，bin `0x5ddec0`，7M app 分区剩余 16%。
 
 
 ## 0.3 单仓库目录（重构后）
@@ -71,22 +71,20 @@ bga4e/
 └── docs/             # 说明
 ```
 
-打开三个终端即可：
+4.3C 显示板已经改成**离线牌局**，烧录后不需要 PC 后端，也不需要 WiFi：
 
 ```powershell
-# 1. 后端
-.\scripts\run_backend.ps1
-
-# 2. 烧录 4.3C 显示板
+# 烧录 4.3C 显示板
 .\scripts\flash_display.ps1 -Port COM9
-
-# 3. PC -> 4.3C 串口桥接（先关闭 monitor）
-.\scripts\run_serial_bridge.ps1 -Port COM9
 ```
 
-摄像头板：
+后端和摄像头仍然保留，但只作为可选模块：
 
 ```powershell
+# 可选：PC 端牌局后端
+.\scripts\run_backend.ps1
+
+# 可选：摄像头板
 .\scripts\flash_camera.ps1 -Port COM8
 ```
 
@@ -95,6 +93,15 @@ bga4e/
 - `xiaozhi/managed_components/`、`xiaozhi/build/` 只保留在本地，不入库；
 - 首次编译会自动使用 `dependencies.lock` 里的版本；
 - 旧的 `AiXiaoZhi_Hiwonder_Sensor` 和两个 bga4e clone 只作为备份，不再作为主工程。
+
+## 0.4 4.3C 离线牌局怎么用
+
+开机直接进入牌局菜单：
+
+1. **开始牌局**：选择麻将/扑克、东/南/西/北座位；麻将下一步提示“请通过摄像头读入手牌”，点“读入完成”进入牌局；扑克直接进入。
+2. **生成演示牌局**：跳过读手牌，自动生成四家手牌，自动摸牌、出牌、切换当前玩家。
+3. 牌局页显示当前玩家、牌墙、四家弃牌、最近出牌、我的手牌和本地策略建议。
+4. 点“语音”或短按 BOOT 回到小智对话；小智通过本地 MCP 工具 `get_state/get_advice/set_hand/record_discard` 读取同一局牌，不再访问 PC 后端。
 
 ---
 

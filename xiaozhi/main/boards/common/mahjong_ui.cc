@@ -1,46 +1,21 @@
 #include "mahjong_ui.h"
 
-#include <cJSON.h>
-#include <driver/uart.h>
-#include <driver/usb_serial_jtag.h>
 #include <esp_log.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
-#include <atomic>
+#include <algorithm>
 #include <cstdio>
-#include <cstring>
-#include <memory>
-#include <stdexcept>
 #include <string>
 #include <vector>
 
-#include "board.h"
 #include "display.h"
-#include "http.h"
-#include "sdkconfig.h"
-#include "wifi_station.h"
+#include "local_game.h"
 
 #define TAG "MahjongUi"
 
 LV_FONT_DECLARE(font_puhui_20_4);
 LV_FONT_DECLARE(font_puhui_30_4);
-
-#ifndef CONFIG_BGA4E_BACKEND_URL
-#define CONFIG_BGA4E_BACKEND_URL "http://192.168.3.134:8000"
-#endif
-#ifndef CONFIG_BGA4E_PLAYER
-#define CONFIG_BGA4E_PLAYER 0
-#endif
-#ifndef CONFIG_BGA4E_SERIAL_UART_NUM
-#define CONFIG_BGA4E_SERIAL_UART_NUM 0
-#endif
-#ifndef CONFIG_BGA4E_SERIAL_BAUDRATE
-#define CONFIG_BGA4E_SERIAL_BAUDRATE 115200
-#endif
-#ifndef CONFIG_BGA4E_SERIAL_USB
-#define CONFIG_BGA4E_SERIAL_USB 1
-#endif
 
 namespace {
 
@@ -51,87 +26,19 @@ constexpr uint32_t COLOR_MUTED = 0x6F675B;
 constexpr uint32_t COLOR_TABLE = 0x1D5A47;
 constexpr uint32_t COLOR_GOLD = 0xC49A2C;
 constexpr uint32_t COLOR_RED = 0xB23A2B;
-#if !CONFIG_BGA4E_SERIAL_USB
-constexpr uart_port_t kSerialUart =
-    static_cast<uart_port_t>(CONFIG_BGA4E_SERIAL_UART_NUM);
-#endif
 
-std::string BaseUrl() {
-    std::string url = CONFIG_BGA4E_BACKEND_URL;
-    while (!url.empty() && url.back() == '/') {
-        url.pop_back();
-    }
-    return url;
-}
-
-std::string HttpRequest(const std::string& method, const std::string& path,
-                        const std::string& body = "") {
-    auto network = Board::GetInstance().GetNetwork();
-    if (network == nullptr) {
-        throw std::runtime_error("网络未连接");
-    }
-    auto http = network->CreateHttp(4);
-    http->SetTimeout(8000);
-    if (method == "POST") {
-        http->SetHeader("Content-Type", "application/json");
-        http->SetContent(std::string(body));
-    }
-    std::string url = BaseUrl() + path;
-    if (!http->Open(method, url)) {
-        throw std::runtime_error("连不上后端");
-    }
-    int code = http->GetStatusCode();
-    std::string response = http->ReadAll();
-    http->Close();
-    if (code != 200) {
-        throw std::runtime_error("HTTP " + std::to_string(code));
-    }
-    return response;
-}
-
-std::unique_ptr<cJSON, decltype(&cJSON_Delete)> ParseJson(const std::string& text) {
-    cJSON* root = cJSON_Parse(text.c_str());
-    if (root == nullptr) {
-        throw std::runtime_error("JSON 解析失败");
-    }
-    return std::unique_ptr<cJSON, decltype(&cJSON_Delete)>(root, cJSON_Delete);
-}
-
-std::string JsonString(const cJSON* root, const char* key, const std::string& fallback = "") {
-    const cJSON* item = cJSON_GetObjectItemCaseSensitive(root, key);
-    if (cJSON_IsString(item) && item->valuestring != nullptr) {
-        return item->valuestring;
-    }
-    return fallback;
-}
-
-int JsonInt(const cJSON* root, const char* key, int fallback = 0) {
-    const cJSON* item = cJSON_GetObjectItemCaseSensitive(root, key);
-    return cJSON_IsNumber(item) ? item->valueint : fallback;
-}
-
-std::string JoinArray(const cJSON* array, const std::string& sep = "、", int limit = 16) {
-    if (!cJSON_IsArray(array)) {
-        return "";
-    }
-    std::string out;
-    int count = 0;
-    const cJSON* item = nullptr;
-    cJSON_ArrayForEach(item, array) {
-        if (count >= limit) {
-            out += sep + "…";
-            break;
-        }
-        if (!cJSON_IsString(item) || item->valuestring == nullptr) {
-            continue;
-        }
-        if (!out.empty()) {
-            out += sep;
-        }
-        out += item->valuestring;
-        count++;
-    }
-    return out;
+lv_obj_t* MakePanel(lv_obj_t* parent, int x, int y, int w, int h) {
+    lv_obj_t* panel = lv_obj_create(parent);
+    lv_obj_set_pos(panel, x, y);
+    lv_obj_set_size(panel, w, h);
+    lv_obj_set_style_bg_color(panel, lv_color_hex(COLOR_PANEL), 0);
+    lv_obj_set_style_bg_opa(panel, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_color(panel, lv_color_hex(0xD8CDB9), 0);
+    lv_obj_set_style_border_width(panel, 1, 0);
+    lv_obj_set_style_radius(panel, 12, 0);
+    lv_obj_set_style_pad_all(panel, 0, 0);
+    lv_obj_remove_flag(panel, LV_OBJ_FLAG_SCROLLABLE);
+    return panel;
 }
 
 lv_obj_t* MakeLabel(lv_obj_t* parent, const char* text, const lv_font_t* font,
@@ -155,7 +62,7 @@ lv_obj_t* MakeButton(lv_obj_t* parent, const char* text, int x, int y, int w, in
     lv_obj_set_pos(btn, x, y);
     lv_obj_set_style_bg_color(btn, lv_color_hex(COLOR_TABLE), 0);
     lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, 0);
-    lv_obj_set_style_radius(btn, 8, 0);
+    lv_obj_set_style_radius(btn, 10, 0);
     lv_obj_set_style_border_width(btn, 0, 0);
     lv_obj_t* label = lv_label_create(btn);
     lv_label_set_text(label, text);
@@ -166,9 +73,9 @@ lv_obj_t* MakeButton(lv_obj_t* parent, const char* text, int x, int y, int w, in
     return btn;
 }
 
-lv_obj_t* MakeTile(lv_obj_t* parent, const std::string& name) {
+lv_obj_t* MakeTile(lv_obj_t* parent, const std::string& name, bool poker) {
     lv_obj_t* tile = lv_obj_create(parent);
-    lv_obj_set_size(tile, 44, 56);
+    lv_obj_set_size(tile, poker ? 54 : 44, 56);
     lv_obj_set_style_bg_color(tile, lv_color_white(), 0);
     lv_obj_set_style_bg_opa(tile, LV_OPA_COVER, 0);
     lv_obj_set_style_border_color(tile, lv_color_hex(0xCDBFA7), 0);
@@ -185,6 +92,26 @@ lv_obj_t* MakeTile(lv_obj_t* parent, const std::string& name) {
     return tile;
 }
 
+std::string JoinDiscards(const std::vector<std::string>& names, int limit) {
+    std::string out;
+    for (int i = 0; i < static_cast<int>(names.size()) && i < limit; ++i) {
+        if (!out.empty()) {
+            out += "、";
+        }
+        out += names[i];
+    }
+    if (static_cast<int>(names.size()) > limit) {
+        out += "…";
+    }
+    return out;
+}
+
+void StyleScreen(lv_obj_t* screen) {
+    lv_obj_set_style_bg_color(screen, lv_color_hex(COLOR_BG), 0);
+    lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, 0);
+    lv_obj_remove_flag(screen, LV_OBJ_FLAG_SCROLLABLE);
+}
+
 }  // namespace
 
 class MahjongUiImpl {
@@ -194,13 +121,126 @@ public:
     void Init() {
         DisplayLockGuard lock(display_);
         chat_screen_ = lv_screen_active();
+        CreateMenu();
+        CreateSetup();
+        CreateReady();
+        CreateGame();
+        CreateChatReturnButton();
+        lv_screen_load(menu_screen_);
+    }
 
+    void StartTask() {
+        xTaskCreate([](void* arg) {
+            static_cast<MahjongUiImpl*>(arg)->TaskLoop();
+        }, "mahjong_ui", 8192, this, 3, &task_);
+    }
+
+    void Toggle() {
+        DisplayLockGuard lock(display_);
+        if (lv_screen_active() == chat_screen_) {
+            if (LocalGame::Instance().active()) {
+                lv_screen_load(game_screen_);
+                UpdateGameLocked();
+            } else {
+                lv_screen_load(menu_screen_);
+            }
+        } else {
+            lv_screen_load(chat_screen_);
+        }
+    }
+
+private:
+    void CreateMenu() {
+        menu_screen_ = lv_obj_create(NULL);
+        StyleScreen(menu_screen_);
+
+        lv_obj_t* top = lv_obj_create(menu_screen_);
+        lv_obj_set_pos(top, 0, 0);
+        lv_obj_set_size(top, 800, 92);
+        lv_obj_set_style_bg_color(top, lv_color_hex(COLOR_TABLE), 0);
+        lv_obj_set_style_bg_opa(top, LV_OPA_COVER, 0);
+        lv_obj_set_style_radius(top, 0, 0);
+        lv_obj_set_style_border_width(top, 0, 0);
+        lv_obj_remove_flag(top, LV_OBJ_FLAG_SCROLLABLE);
+        MakeLabel(top, "BGA4E 牌局助手", &font_puhui_30_4, COLOR_GOLD, 24, 14);
+        MakeLabel(top, "离线版 · 不依赖后端 / WiFi", &font_puhui_20_4, 0xD7E6DC, 24, 52);
+
+        MakeButton(menu_screen_, "开始牌局", 76, 150, 300, 116, OnOpenSetup, this);
+        MakeButton(menu_screen_, "生成演示牌局", 424, 150, 300, 116, OnDemo, this);
+
+        menu_status_ = MakeLabel(menu_screen_, "选择一种方式开始。\n演示模式会自动生成手牌并自动摸打。",
+                                 &font_puhui_20_4, COLOR_INK, 76, 306, 650);
+        MakeLabel(menu_screen_, "提示：点击右上角“语音”或短按 BOOT 可以和小智说话。",
+                  &font_puhui_20_4, COLOR_MUTED, 76, 390, 650);
+        MakeButton(menu_screen_, "语音", 680, 22, 90, 44, OnChat, this);
+    }
+
+    void CreateSetup() {
+        setup_screen_ = lv_obj_create(NULL);
+        StyleScreen(setup_screen_);
+
+        lv_obj_t* top = lv_obj_create(setup_screen_);
+        lv_obj_set_pos(top, 0, 0);
+        lv_obj_set_size(top, 800, 70);
+        lv_obj_set_style_bg_color(top, lv_color_hex(COLOR_TABLE), 0);
+        lv_obj_set_style_bg_opa(top, LV_OPA_COVER, 0);
+        lv_obj_set_style_radius(top, 0, 0);
+        lv_obj_set_style_border_width(top, 0, 0);
+        lv_obj_remove_flag(top, LV_OBJ_FLAG_SCROLLABLE);
+        MakeLabel(top, "开始牌局", &font_puhui_30_4, COLOR_GOLD, 24, 14);
+        MakeButton(top, "返回", 680, 14, 90, 42, OnMenu, this);
+
+        MakeLabel(setup_screen_, "游戏类型", &font_puhui_20_4, COLOR_MUTED, 80, 104);
+        type_buttons_[0] = MakeButton(setup_screen_, "麻将", 80, 140, 190, 64,
+                                      OnTypeMahjong, this);
+        type_buttons_[1] = MakeButton(setup_screen_, "扑克", 290, 140, 190, 64,
+                                      OnTypePoker, this);
+
+        MakeLabel(setup_screen_, "你的座位", &font_puhui_20_4, COLOR_MUTED, 80, 236);
+        seat_buttons_[0] = MakeButton(setup_screen_, "东", 80, 272, 140, 60,
+                                      OnSeatEast, this);
+        seat_buttons_[1] = MakeButton(setup_screen_, "南", 238, 272, 140, 60,
+                                      OnSeatSouth, this);
+        seat_buttons_[2] = MakeButton(setup_screen_, "西", 396, 272, 140, 60,
+                                      OnSeatWest, this);
+        seat_buttons_[3] = MakeButton(setup_screen_, "北", 554, 272, 140, 60,
+                                      OnSeatNorth, this);
+
+        setup_hint_ = MakeLabel(setup_screen_, "", &font_puhui_20_4, COLOR_INK,
+                                80, 356, 640);
+        MakeButton(setup_screen_, "下一步", 560, 396, 180, 56, OnSetupNext, this);
+        UpdateSetupLocked();
+    }
+
+    void CreateReady() {
+        ready_screen_ = lv_obj_create(NULL);
+        StyleScreen(ready_screen_);
+
+        lv_obj_t* top = lv_obj_create(ready_screen_);
+        lv_obj_set_pos(top, 0, 0);
+        lv_obj_set_size(top, 800, 70);
+        lv_obj_set_style_bg_color(top, lv_color_hex(COLOR_TABLE), 0);
+        lv_obj_set_style_bg_opa(top, LV_OPA_COVER, 0);
+        lv_obj_set_style_radius(top, 0, 0);
+        lv_obj_set_style_border_width(top, 0, 0);
+        lv_obj_remove_flag(top, LV_OBJ_FLAG_SCROLLABLE);
+        MakeLabel(top, "读入手牌", &font_puhui_30_4, COLOR_GOLD, 24, 14);
+        MakeButton(top, "返回", 680, 14, 90, 42, OnBackSetup, this);
+
+        ready_hint_ = MakeLabel(ready_screen_,
+                                "请通过摄像头读入手牌；\n"
+                                "也可以点“语音”对小智报牌，例如：\n"
+                                "“我手里有一万、二万、三条……”\n"
+                                "读完点“读入完成”进入牌局。",
+                                &font_puhui_20_4, COLOR_INK, 70, 116, 660);
+        MakeButton(ready_screen_, "读入完成", 220, 336, 190, 64, OnHandReady, this);
+        MakeButton(ready_screen_, "返回设置", 440, 336, 160, 64, OnBackSetup, this);
+    }
+
+    void CreateGame() {
         game_screen_ = lv_obj_create(NULL);
-        lv_obj_set_style_bg_color(game_screen_, lv_color_hex(COLOR_BG), 0);
-        lv_obj_set_style_bg_opa(game_screen_, LV_OPA_COVER, 0);
-        lv_obj_remove_flag(game_screen_, LV_OBJ_FLAG_SCROLLABLE);
+        StyleScreen(game_screen_);
 
-        // 顶栏
         lv_obj_t* top = lv_obj_create(game_screen_);
         lv_obj_set_pos(top, 0, 0);
         lv_obj_set_size(top, 800, 58);
@@ -209,43 +249,37 @@ public:
         lv_obj_set_style_radius(top, 0, 0);
         lv_obj_set_style_border_width(top, 0, 0);
         lv_obj_remove_flag(top, LV_OBJ_FLAG_SCROLLABLE);
+        game_title_ = MakeLabel(top, "离线牌局", &font_puhui_30_4, COLOR_GOLD, 18, 10);
+        game_status_ = MakeLabel(top, "准备中", &font_puhui_20_4, 0xD7E6DC, 310, 18, 190);
 
-        MakeLabel(top, "BGA4E 麻将助手", &font_puhui_30_4, COLOR_GOLD, 18, 10);
-        status_label_ = MakeLabel(top, "连接后端中…", &font_puhui_20_4, 0xD7E6DC, 300, 18, 230);
+        MakeButton(top, "建议", 540, 11, 72, 36, OnAdvice, this);
+        MakeButton(top, "语音", 620, 11, 72, 36, OnChat, this);
+        MakeButton(top, "菜单", 700, 11, 84, 36, OnMenu, this);
 
-        MakeButton(top, "刷新", 545, 11, 72, 36, OnRefresh, this);
-        MakeButton(top, "建议", 625, 11, 72, 36, OnAdvice, this);
-        MakeButton(top, "语音", 705, 11, 76, 36, OnChat, this);
-
-        // 当前牌局信息
-        lv_obj_t* info = MakePanel(12, 70, 500, 58);
-        turn_label_ = MakeLabel(info, "当前：— · 第 0 巡 · 牌墙 —", &font_puhui_20_4,
+        lv_obj_t* info = MakePanel(game_screen_, 12, 70, 500, 58);
+        turn_label_ = MakeLabel(info, "当前：— · 牌墙 —", &font_puhui_20_4,
                                 COLOR_INK, 14, 14, 470);
 
-        // 四家弃牌
-        lv_obj_t* players = MakePanel(12, 138, 500, 182);
+        lv_obj_t* players = MakePanel(game_screen_, 12, 138, 500, 182);
         MakeLabel(players, "各家弃牌", &font_puhui_20_4, COLOR_MUTED, 14, 8);
         for (int i = 0; i < 4; ++i) {
             player_labels_[i] = MakeLabel(players, "", &font_puhui_20_4, COLOR_INK,
                                           14, 38 + i * 34, 470);
         }
 
-        // 最近出牌
-        lv_obj_t* last = MakePanel(12, 330, 500, 68);
+        lv_obj_t* last = MakePanel(game_screen_, 12, 330, 500, 68);
         MakeLabel(last, "最近出牌", &font_puhui_20_4, COLOR_MUTED, 14, 8);
         last_label_ = MakeLabel(last, "—", &font_puhui_30_4, COLOR_RED, 150, 16, 330);
 
-        // 策略建议
-        lv_obj_t* advice = MakePanel(524, 70, 264, 328);
+        lv_obj_t* advice = MakePanel(game_screen_, 524, 70, 264, 328);
         MakeLabel(advice, "策略建议", &font_puhui_20_4, COLOR_MUTED, 14, 10);
         advice_action_ = MakeLabel(advice, "等待牌局…", &font_puhui_30_4, COLOR_TABLE,
                                    14, 46, 236);
-        advice_reason_ = MakeLabel(advice, "点击“刷新”获取当前牌局，\n点击“建议”获取出牌建议。",
-                                   &font_puhui_20_4, COLOR_INK, 14, 100, 236);
-        advice_meta_ = MakeLabel(advice, "", &font_puhui_20_4, COLOR_MUTED, 14, 270, 236);
+        advice_reason_ = MakeLabel(advice, "点击“建议”获取本地建议。",
+                                   &font_puhui_20_4, COLOR_INK, 14, 108, 236);
+        advice_meta_ = MakeLabel(advice, "", &font_puhui_20_4, COLOR_MUTED, 14, 278, 236);
 
-        // 我的手牌
-        lv_obj_t* hand_panel = MakePanel(12, 406, 776, 66);
+        lv_obj_t* hand_panel = MakePanel(game_screen_, 12, 406, 776, 66);
         MakeLabel(hand_panel, "手牌", &font_puhui_20_4, COLOR_MUTED, 12, 20);
         hand_row_ = lv_obj_create(hand_panel);
         lv_obj_set_pos(hand_row_, 72, 5);
@@ -256,367 +290,234 @@ public:
         lv_obj_set_style_pad_column(hand_row_, 3, 0);
         lv_obj_set_flex_flow(hand_row_, LV_FLEX_FLOW_ROW);
         lv_obj_remove_flag(hand_row_, LV_OBJ_FLAG_SCROLLABLE);
-
-        // 回到对话页的“牌局”按钮
-        return_btn_ = MakeButton(chat_screen_, "牌局", 700, 36, 84, 36, OnShowGame, this);
-
-        lv_screen_load(game_screen_);
     }
 
-    void StartTask() {
-        xTaskCreate([](void* arg) {
-            static_cast<MahjongUiImpl*>(arg)->TaskLoop();
-        }, "mahjong_ui", 10240, this, 3, &task_);
-
-        // 方案 D：PC 通过 CH343 USB-UART 直接发送 JSON，完全绕开 WiFi/HTTP。
-        xTaskCreate([](void* arg) {
-            static_cast<MahjongUiImpl*>(arg)->SerialTask();
-        }, "mahjong_serial", 8192, this, 4, &serial_task_);
+    void CreateChatReturnButton() {
+        return_btn_ = MakeButton(chat_screen_, "牌局", 700, 36, 84, 36,
+                                 OnShowGame, this);
     }
 
-    void Toggle() {
+    void UpdateSetupLocked() {
+        if (setup_hint_ == nullptr) return;
+        for (int i = 0; i < 2; ++i) {
+            lv_obj_set_style_bg_color(type_buttons_[i],
+                                      lv_color_hex(i == static_cast<int>(selected_type_)
+                                                       ? COLOR_GOLD : COLOR_TABLE), 0);
+        }
+        for (int i = 0; i < 4; ++i) {
+            lv_obj_set_style_bg_color(seat_buttons_[i],
+                                      lv_color_hex(i == selected_seat_ ? COLOR_GOLD
+                                                                       : COLOR_TABLE), 0);
+        }
+        char hint[160];
+        snprintf(hint, sizeof(hint), "已选择：%s · %s家。\n%s",
+                 LocalGame::TypeName(selected_type_), LocalGame::SeatName(selected_seat_),
+                 selected_type_ == GameType::kMahjong
+                     ? "下一步会提示通过摄像头读入手牌。"
+                     : "扑克会直接生成手牌并开始。");
+        lv_label_set_text(setup_hint_, hint);
+    }
+
+    void ShowGame() {
         DisplayLockGuard lock(display_);
-        if (lv_screen_active() == game_screen_) {
-            lv_screen_load(chat_screen_);
+        lv_screen_load(game_screen_);
+        UpdateGameLocked();
+    }
+
+    void StartSelected(bool demo, bool skip_ready) {
+        if (selected_type_ == GameType::kMahjong && !skip_ready) {
+            DisplayLockGuard lock(display_);
+            lv_screen_load(ready_screen_);
+            return;
+        }
+        LocalGame::Instance().Start(selected_type_, selected_seat_, demo);
+        ShowGame();
+    }
+
+    void UpdateGameLocked() {
+        GameView view = LocalGame::Instance().View();
+        if (!view.active) {
+            lv_label_set_text(game_title_, "离线牌局");
+            lv_label_set_text(game_status_, "未开始");
+            return;
+        }
+
+        char title[80];
+        snprintf(title, sizeof(title), "离线%s · %s家", LocalGame::TypeName(view.type),
+                 LocalGame::SeatName(view.my_seat));
+        lv_label_set_text(game_title_, title);
+
+        char status[96];
+        if (view.finished) {
+            snprintf(status, sizeof(status), "第 %d 巡 · 已结束", view.turn);
         } else {
-            lv_screen_load(game_screen_);
+            snprintf(status, sizeof(status), "第 %d 巡 · 牌墙 %d", view.turn,
+                     view.wall_remaining);
+        }
+        lv_label_set_text(game_status_, status);
+
+        char turn[160];
+        snprintf(turn, sizeof(turn), "当前：%s%s · 你：%s",
+                 view.current_name.c_str(), view.my_turn ? "（你的回合）" : "",
+                 LocalGame::SeatName(view.my_seat));
+        lv_label_set_text(turn_label_, turn);
+
+        if (view.last_discard.empty()) {
+            lv_label_set_text(last_label_, "—");
+        } else {
+            char last[100];
+            snprintf(last, sizeof(last), "%s：%s",
+                     LocalGame::SeatName(view.last_discard_player),
+                     view.last_discard.c_str());
+            lv_label_set_text(last_label_, last);
+        }
+
+        lv_obj_clean(hand_row_);
+        for (const auto& name : view.my_hand) {
+            MakeTile(hand_row_, name, view.type == GameType::kPoker);
+        }
+
+        for (int i = 0; i < 4; ++i) {
+            std::string discards = JoinDiscards(view.players[i].discards, 7);
+            char line[240];
+            snprintf(line, sizeof(line), "%s(%d)：%s", view.players[i].name.c_str(),
+                     view.players[i].hand_count,
+                     discards.empty() ? "—" : discards.c_str());
+            lv_label_set_text(player_labels_[i], line);
+        }
+        UpdateAdviceLocked();
+    }
+
+    void UpdateAdviceLocked() {
+        AdviceView advice = LocalGame::Instance().Advice();
+        lv_label_set_text(advice_action_, advice.action.c_str());
+        lv_label_set_text(advice_reason_, advice.reason.c_str());
+        lv_label_set_text(advice_meta_, advice.meta.c_str());
+    }
+
+    void TaskLoop() {
+        while (true) {
+            if (LocalGame::Instance().active()) {
+                bool changed = LocalGame::Instance().Tick();
+                if (changed) {
+                    DisplayLockGuard lock(display_);
+                    if (lv_screen_active() == game_screen_) {
+                        UpdateGameLocked();
+                    }
+                }
+            }
+            vTaskDelay(pdMS_TO_TICKS(1200));
         }
     }
 
-private:
-    lv_obj_t* MakePanel(int x, int y, int w, int h) {
-        lv_obj_t* panel = lv_obj_create(game_screen_);
-        lv_obj_set_pos(panel, x, y);
-        lv_obj_set_size(panel, w, h);
-        lv_obj_set_style_bg_color(panel, lv_color_hex(COLOR_PANEL), 0);
-        lv_obj_set_style_bg_opa(panel, LV_OPA_COVER, 0);
-        lv_obj_set_style_border_color(panel, lv_color_hex(0xD8CDB9), 0);
-        lv_obj_set_style_border_width(panel, 1, 0);
-        lv_obj_set_style_radius(panel, 12, 0);
-        lv_obj_set_style_pad_all(panel, 0, 0);
-        lv_obj_remove_flag(panel, LV_OBJ_FLAG_SCROLLABLE);
-        return panel;
-    }
-
-    static void OnRefresh(lv_event_t* e) {
+    static void OnOpenSetup(lv_event_t* e) {
         auto* self = static_cast<MahjongUiImpl*>(lv_event_get_user_data(e));
-        self->refresh_requested_.store(true);
+        DisplayLockGuard lock(self->display_);
+        lv_screen_load(self->setup_screen_);
+    }
+    static void OnDemo(lv_event_t* e) {
+        auto* self = static_cast<MahjongUiImpl*>(lv_event_get_user_data(e));
+        LocalGame::Instance().Start(self->selected_type_, self->selected_seat_, true);
+        self->ShowGame();
+    }
+    static void OnTypeMahjong(lv_event_t* e) {
+        auto* self = static_cast<MahjongUiImpl*>(lv_event_get_user_data(e));
+        self->selected_type_ = GameType::kMahjong;
+        DisplayLockGuard lock(self->display_);
+        self->UpdateSetupLocked();
+    }
+    static void OnTypePoker(lv_event_t* e) {
+        auto* self = static_cast<MahjongUiImpl*>(lv_event_get_user_data(e));
+        self->selected_type_ = GameType::kPoker;
+        DisplayLockGuard lock(self->display_);
+        self->UpdateSetupLocked();
+    }
+    static void OnSeatEast(lv_event_t* e) {
+        auto* self = static_cast<MahjongUiImpl*>(lv_event_get_user_data(e));
+        self->selected_seat_ = 0;
+        DisplayLockGuard lock(self->display_);
+        self->UpdateSetupLocked();
+    }
+    static void OnSeatSouth(lv_event_t* e) {
+        auto* self = static_cast<MahjongUiImpl*>(lv_event_get_user_data(e));
+        self->selected_seat_ = 1;
+        DisplayLockGuard lock(self->display_);
+        self->UpdateSetupLocked();
+    }
+    static void OnSeatWest(lv_event_t* e) {
+        auto* self = static_cast<MahjongUiImpl*>(lv_event_get_user_data(e));
+        self->selected_seat_ = 2;
+        DisplayLockGuard lock(self->display_);
+        self->UpdateSetupLocked();
+    }
+    static void OnSeatNorth(lv_event_t* e) {
+        auto* self = static_cast<MahjongUiImpl*>(lv_event_get_user_data(e));
+        self->selected_seat_ = 3;
+        DisplayLockGuard lock(self->display_);
+        self->UpdateSetupLocked();
+    }
+    static void OnSetupNext(lv_event_t* e) {
+        auto* self = static_cast<MahjongUiImpl*>(lv_event_get_user_data(e));
+        if (self->selected_type_ == GameType::kPoker) {
+            self->StartSelected(false, true);
+        } else {
+            DisplayLockGuard lock(self->display_);
+            lv_screen_load(self->ready_screen_);
+        }
+    }
+    static void OnHandReady(lv_event_t* e) {
+        auto* self = static_cast<MahjongUiImpl*>(lv_event_get_user_data(e));
+        if (LocalGame::Instance().active() &&
+            LocalGame::Instance().type() == GameType::kMahjong) {
+            self->ShowGame();
+            return;
+        }
+        self->StartSelected(false, true);
+    }
+    static void OnBackSetup(lv_event_t* e) {
+        auto* self = static_cast<MahjongUiImpl*>(lv_event_get_user_data(e));
+        DisplayLockGuard lock(self->display_);
+        lv_screen_load(self->setup_screen_);
+    }
+    static void OnMenu(lv_event_t* e) {
+        auto* self = static_cast<MahjongUiImpl*>(lv_event_get_user_data(e));
+        LocalGame::Instance().Stop();
+        DisplayLockGuard lock(self->display_);
+        lv_screen_load(self->menu_screen_);
     }
     static void OnAdvice(lv_event_t* e) {
         auto* self = static_cast<MahjongUiImpl*>(lv_event_get_user_data(e));
-        self->advice_requested_.store(true);
+        DisplayLockGuard lock(self->display_);
+        self->UpdateAdviceLocked();
     }
     static void OnChat(lv_event_t* e) {
         auto* self = static_cast<MahjongUiImpl*>(lv_event_get_user_data(e));
+        DisplayLockGuard lock(self->display_);
         lv_screen_load(self->chat_screen_);
     }
     static void OnShowGame(lv_event_t* e) {
         auto* self = static_cast<MahjongUiImpl*>(lv_event_get_user_data(e));
-        lv_screen_load(self->game_screen_);
-    }
-
-    void TaskLoop() {
-        int ticks = 0;
-        bool waiting_network = false;
-        while (true) {
-            // 串口模式：PC 已经通过 UART 发来牌局，不再走 HTTP/WiFi。
-            if (serial_active_.load()) {
-                if (advice_requested_.exchange(false)) {
-                    SendSerialAdviceRequest();
-                }
-                vTaskDelay(pdMS_TO_TICKS(1000));
-                continue;
-            }
-
-            // 关键：WiFi/lwIP 还没启动时绝不能创建 HTTP 连接，否则会触发
-            // tcpip_send_msg_wait_sem: Invalid mbox 断言。
-            if (!WifiStation::GetInstance().IsConnected()) {
-                if (!waiting_network) {
-                    waiting_network = true;
-                    ShowWaitingNetwork();
-                }
-                vTaskDelay(pdMS_TO_TICKS(1000));
-                continue;
-            }
-            waiting_network = false;
-
-            // 点击“刷新”立即拉取；空闲时每 3 个周期（约 4.5 秒）自动刷新一次
-            bool refresh = refresh_requested_.exchange(false) || (ticks % 3 == 0);
-            ticks++;
-            if (refresh) {
-                FetchSummary();
-            }
-            if (advice_requested_.exchange(false)) {
-                FetchAdvice();
-            }
-            vTaskDelay(pdMS_TO_TICKS(1500));
-        }
-    }
-
-    // UART0 是 CH343 的 console UART。PC 端只发 BGA4E 前缀的 JSON 行，
-    // 其他日志/普通输入全部忽略。
-    void SerialTask() {
-#if CONFIG_BGA4E_SERIAL_USB
-        if (!usb_serial_jtag_is_driver_installed()) {
-            usb_serial_jtag_driver_config_t config = {
-                .tx_buffer_size = 4096,
-                .rx_buffer_size = 4096,
-            };
-            esp_err_t err = usb_serial_jtag_driver_install(&config);
-            if (err != ESP_OK) {
-                ESP_LOGE(TAG, "USB Serial/JTAG driver install failed: %s",
-                         esp_err_to_name(err));
-                vTaskDelete(nullptr);
-                return;
-            }
-        }
-        ESP_LOGI(TAG, "serial bridge listening on native USB Serial/JTAG");
-#else
-        if (!uart_is_driver_installed(kSerialUart)) {
-            esp_err_t err = uart_driver_install(kSerialUart, 4096, 0, 0, nullptr, 0);
-            if (err != ESP_OK) {
-                ESP_LOGE(TAG, "serial UART%d driver install failed: %s",
-                         CONFIG_BGA4E_SERIAL_UART_NUM, esp_err_to_name(err));
-                vTaskDelete(nullptr);
-                return;
-            }
-            uart_config_t config = {
-                .baud_rate = CONFIG_BGA4E_SERIAL_BAUDRATE,
-                .data_bits = UART_DATA_8_BITS,
-                .parity = UART_PARITY_DISABLE,
-                .stop_bits = UART_STOP_BITS_1,
-                .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-                .source_clk = UART_SCLK_DEFAULT,
-            };
-            err = uart_param_config(kSerialUart, &config);
-            if (err != ESP_OK) {
-                ESP_LOGE(TAG, "serial UART%d config failed: %s",
-                         CONFIG_BGA4E_SERIAL_UART_NUM, esp_err_to_name(err));
-                vTaskDelete(nullptr);
-                return;
-            }
-        }
-        ESP_LOGI(TAG, "serial bridge listening on UART%d @ %d",
-                 CONFIG_BGA4E_SERIAL_UART_NUM, CONFIG_BGA4E_SERIAL_BAUDRATE);
-#endif
-
-        std::string buffer;
-        uint8_t chunk[256];
-        while (true) {
-#if CONFIG_BGA4E_SERIAL_USB
-            int n = usb_serial_jtag_read_bytes(chunk, sizeof(chunk), pdMS_TO_TICKS(200));
-#else
-            int n = uart_read_bytes(kSerialUart, chunk, sizeof(chunk), pdMS_TO_TICKS(200));
-#endif
-            if (n <= 0) {
-                continue;
-            }
-            buffer.append(reinterpret_cast<char*>(chunk), n);
-            if (buffer.size() > 16384) {
-                buffer.erase(0, buffer.size() - 8192);
-            }
-            size_t pos;
-            while ((pos = buffer.find('\n')) != std::string::npos) {
-                std::string line = buffer.substr(0, pos);
-                buffer.erase(0, pos + 1);
-                if (!line.empty() && line.back() == '\r') {
-                    line.pop_back();
-                }
-                HandleSerialLine(line);
-            }
-        }
-    }
-
-    void HandleSerialLine(const std::string& line) {
-        constexpr const char* kPrefix = "BGA4E ";
-        if (line.rfind(kPrefix, 0) != 0) {
-            return;
-        }
-        std::string type;
-        try {
-            auto root = ParseJson(line.substr(strlen(kPrefix)));
-            type = JsonString(root.get(), "type");
-            serial_active_.store(true);
-            if (type == "summary") {
-                UpdateSummary(root.get());
-                ESP_LOGI(TAG, "serial summary received");
-            } else if (type == "advice") {
-                UpdateAdvice(root.get());
-                ESP_LOGI(TAG, "serial advice received");
-            } else if (type == "ping") {
-                SendSerialLine("{\"type\":\"pong\"}");
-            }
-        } catch (const std::exception& e) {
-            ESP_LOGW(TAG, "bad serial json: %s", e.what());
-        }
-    }
-
-    void SendSerialAdviceRequest() {
-        const char* req = "BGA4E_REQ {\"type\":\"advice\"}\n";
-#if CONFIG_BGA4E_SERIAL_USB
-        int written = usb_serial_jtag_write_bytes(req, strlen(req), pdMS_TO_TICKS(1000));
-#else
-        int written = uart_write_bytes(kSerialUart, req, strlen(req));
-#endif
-        if (written < 0) {
-            ESP_LOGW(TAG, "serial advice request failed");
-        }
-    }
-
-    void SendSerialLine(const char* json) {
-        std::string line = "BGA4E " + std::string(json) + "\n";
-#if CONFIG_BGA4E_SERIAL_USB
-        int written = usb_serial_jtag_write_bytes(
-            line.data(), line.size(), pdMS_TO_TICKS(1000));
-#else
-        int written = uart_write_bytes(kSerialUart, line.data(), line.size());
-#endif
-        if (written < 0) {
-            ESP_LOGW(TAG, "serial response failed");
-        }
-    }
-
-    void ShowWaitingNetwork() {
-        DisplayLockGuard lock(display_);
-        lv_label_set_text(status_label_, "等待 WiFi");
-        lv_label_set_text(advice_reason_, "正在连接 WiFi…\n连接成功后会自动刷新牌局。");
-    }
-
-    void FetchSummary() {
-        try {
-            std::string body = HttpRequest(
-                "GET", "/api/current/summary?player=" + std::to_string(CONFIG_BGA4E_PLAYER));
-            auto root = ParseJson(body);
-            UpdateSummary(root.get());
-        } catch (const std::exception& e) {
-            ESP_LOGW(TAG, "summary failed: %s", e.what());
-            UpdateOffline();
-        }
-    }
-
-    void FetchAdvice() {
-        cJSON* root = cJSON_CreateObject();
-        cJSON_AddNumberToObject(root, "player", CONFIG_BGA4E_PLAYER);
-        cJSON_AddBoolToObject(root, "use_llm", false);
-        char* raw = cJSON_PrintUnformatted(root);
-        std::string body = raw == nullptr ? "{}" : raw;
-        cJSON_free(raw);
-        cJSON_Delete(root);
-        try {
-            std::string response = HttpRequest("POST", "/api/current/advice", body);
-            auto advice = ParseJson(response);
-            UpdateAdvice(advice.get());
-        } catch (const std::exception& e) {
-            ESP_LOGW(TAG, "advice failed: %s", e.what());
-            DisplayLockGuard lock(display_);
-            lv_label_set_text(advice_reason_, "暂时连不上牌局服务，请检查后端地址和 WiFi。");
-        }
-    }
-
-    void UpdateSummary(const cJSON* root) {
-        DisplayLockGuard lock(display_);
-        lv_label_set_text(status_label_, serial_active_.load() ? "串口已连接" : "已连接");
-
-        std::string current = JsonString(root, "current_name", "—");
-        int wall = JsonInt(root, "wall_remaining", 0);
-        int turn = JsonInt(root, "turn", 0);
-        char line[128];
-        snprintf(line, sizeof(line), "当前：%s · 第 %d 巡 · 牌墙 %d",
-                 current.c_str(), turn, wall);
-        lv_label_set_text(turn_label_, line);
-
-        const cJSON* last = cJSON_GetObjectItemCaseSensitive(root, "last_discard");
-        if (cJSON_IsObject(last)) {
-            std::string name = JsonString(last, "name", "—");
-            lv_label_set_text(last_label_, name.c_str());
+        DisplayLockGuard lock(self->display_);
+        if (LocalGame::Instance().active()) {
+            lv_screen_load(self->game_screen_);
+            self->UpdateGameLocked();
         } else {
-            lv_label_set_text(last_label_, "—");
+            lv_screen_load(self->menu_screen_);
         }
-
-        const cJSON* hand = cJSON_GetObjectItemCaseSensitive(root, "my_hand_names");
-        lv_obj_clean(hand_row_);
-        if (cJSON_IsArray(hand)) {
-            const cJSON* item = nullptr;
-            int count = 0;
-            cJSON_ArrayForEach(item, hand) {
-                if (count++ >= 14) {
-                    break;
-                }
-                if (cJSON_IsString(item) && item->valuestring != nullptr) {
-                    MakeTile(hand_row_, item->valuestring);
-                }
-            }
-        }
-
-        const cJSON* players = cJSON_GetObjectItemCaseSensitive(root, "players");
-        if (cJSON_IsArray(players)) {
-            const cJSON* p = nullptr;
-            int idx = 0;
-            cJSON_ArrayForEach(p, players) {
-                if (idx >= 4) {
-                    break;
-                }
-                std::string name = JsonString(p, "name", "玩家");
-                std::string discards = JoinArray(
-                    cJSON_GetObjectItemCaseSensitive(p, "discard_names"), "、", 8);
-                std::string text = name + "：" + (discards.empty() ? "—" : discards);
-                lv_label_set_text(player_labels_[idx], text.c_str());
-                idx++;
-            }
-        }
-    }
-
-    void UpdateOffline() {
-        DisplayLockGuard lock(display_);
-        lv_label_set_text(status_label_, "后端未连接");
-        lv_label_set_text(advice_reason_, "连不上后端。请确认：\n1. PC 后端已启动\n2. 同一 WiFi\n3. menuconfig 中的 IP");
-    }
-
-    void UpdateAdvice(const cJSON* root) {
-        DisplayLockGuard lock(display_);
-        if (cJSON_IsTrue(cJSON_GetObjectItemCaseSensitive(root, "needs_hand"))) {
-            lv_label_set_text(advice_action_, "请先录入手牌");
-            lv_label_set_text(advice_reason_, "对小智说：\n“我的手牌是……”");
-            lv_label_set_text(advice_meta_, "");
-            return;
-        }
-        std::string action = JsonString(root, "action", "none");
-        std::string tile = JsonString(root, "tile_name");
-        std::string reason = JsonString(root, "reason");
-        int shanten = JsonInt(root, "shanten", 99);
-        int ukeire = JsonInt(root, "ukeire", 0);
-
-        std::string action_text;
-        if (action == "discard") {
-            action_text = "建议打 " + tile;
-        } else if (action == "draw") {
-            action_text = "建议摸牌";
-        } else if (action == "peng") {
-            action_text = "可以碰 " + tile;
-        } else if (action == "chi") {
-            action_text = "可以吃 " + tile;
-        } else if (action == "gang") {
-            action_text = "可以杠 " + tile;
-        } else if (action == "win") {
-            action_text = "已经可以胡牌";
-        } else {
-            action_text = "暂无建议";
-        }
-        lv_label_set_text(advice_action_, action_text.c_str());
-        lv_label_set_text(advice_reason_, reason.c_str());
-
-        char meta[96] = "";
-        if (shanten >= 0 && shanten <= 8) {
-            snprintf(meta, sizeof(meta), "向听 %d · 进张 %d 张", shanten, ukeire);
-        }
-        lv_label_set_text(advice_meta_, meta);
     }
 
     Display* display_;
-    lv_obj_t* game_screen_ = nullptr;
     lv_obj_t* chat_screen_ = nullptr;
+    lv_obj_t* menu_screen_ = nullptr;
+    lv_obj_t* setup_screen_ = nullptr;
+    lv_obj_t* ready_screen_ = nullptr;
+    lv_obj_t* game_screen_ = nullptr;
     lv_obj_t* return_btn_ = nullptr;
-    lv_obj_t* status_label_ = nullptr;
+    lv_obj_t* menu_status_ = nullptr;
+    lv_obj_t* setup_hint_ = nullptr;
+    lv_obj_t* ready_hint_ = nullptr;
+    lv_obj_t* game_title_ = nullptr;
+    lv_obj_t* game_status_ = nullptr;
     lv_obj_t* turn_label_ = nullptr;
     lv_obj_t* last_label_ = nullptr;
     lv_obj_t* hand_row_ = nullptr;
@@ -624,11 +525,11 @@ private:
     lv_obj_t* advice_action_ = nullptr;
     lv_obj_t* advice_reason_ = nullptr;
     lv_obj_t* advice_meta_ = nullptr;
-    std::atomic<bool> refresh_requested_{true};
-    std::atomic<bool> advice_requested_{false};
-    std::atomic<bool> serial_active_{false};
+    lv_obj_t* type_buttons_[2] = {};
+    lv_obj_t* seat_buttons_[4] = {};
+    GameType selected_type_ = GameType::kMahjong;
+    int selected_seat_ = 0;
     TaskHandle_t task_ = nullptr;
-    TaskHandle_t serial_task_ = nullptr;
 };
 
 static MahjongUiImpl* g_mahjong_ui = nullptr;
@@ -640,7 +541,7 @@ void MahjongUi::Init(Display* display) {
     g_mahjong_ui = new MahjongUiImpl(display);
     g_mahjong_ui->Init();
     g_mahjong_ui->StartTask();
-    ESP_LOGI(TAG, "Mahjong UI started");
+    ESP_LOGI(TAG, "offline Mahjong UI started");
 }
 
 void MahjongUi::Toggle() {
