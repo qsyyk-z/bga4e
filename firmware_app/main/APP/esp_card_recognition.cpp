@@ -3,6 +3,7 @@
 #include "card_classifier_mahjong.hpp"
 #include "card_classifier_poker.hpp"
 #include "card_labels.hpp"
+#include "camera_web.h"
 #include "dl_define.hpp"
 #include "dl_image.hpp"
 #include "fb_gfx.h"
@@ -260,13 +261,15 @@ static void card_ai_task(void *arg)
         int y0 = (height - side) / 2;
 
         /* 串口协议：每帧一行 JSON，PC 端 tools/serial_bridge.py 可直接写入
-           <game>/cards.jsonl。麻将字段 name，扑克字段 rank/suit，box 为裁剪框。 */
+           <game>/cards.jsonl。麻将字段 name，扑克字段 rank/suit，box 为裁剪框。
+           同一份 JSON 也发布到网页 /api/latest，方便在没有串口日志时查看。 */
+        char result[256];
         if (s_mode)
         {
             char rank[8];
             char suit = '?';
             card_poker_rank_suit(names[best], rank, sizeof(rank), &suit);
-            ESP_LOGI("CARD_RESULT",
+            snprintf(result, sizeof(result),
                      "{\"mode\":\"poker\",\"rank\":\"%s\",\"suit\":\"%c\",\"conf\":%.3f,\"box\":[%d,%d,%d,%d]}",
                      rank, suit, conf, x0, y0, side, side);
         }
@@ -274,10 +277,12 @@ static void card_ai_task(void *arg)
         {
             char mj_name[24];
             card_mahjong_full_name(names[best], mj_name, sizeof(mj_name));
-            ESP_LOGI("CARD_RESULT",
+            snprintf(result, sizeof(result),
                      "{\"mode\":\"mahjong\",\"name\":\"%s\",\"conf\":%.3f,\"box\":[%d,%d,%d,%d]}",
                      mj_name, conf, x0, y0, side, side);
         }
+        ESP_LOGI("CARD_RESULT", "%s", result);
+        camera_web_set_result(result);
         dl::image::draw_hollow_rectangle((uint16_t *)frame->buf, height, width,
                                          x0, y0, x0 + side, y0 + side, CARD_COLOR_GREEN);
 
@@ -296,6 +301,9 @@ static void card_ai_task(void *arg)
         {
             fb_gfx_printf(frame, 4, 36, CARD_COLOR_GREEN, "CONF:%.2f", conf);
         }
+
+        /* 只有网页有客户端时才编码 JPEG，避免影响本地 LCD 帧率。 */
+        camera_web_publish(frame);
 
         if (xQueueAIFrameO)
         {

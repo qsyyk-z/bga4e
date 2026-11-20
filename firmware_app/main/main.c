@@ -15,6 +15,7 @@
 #include "led.h"
 #include "lcd.h"
 #include "esp_card_recognition.hpp"
+#include "camera_web.h"
 #include "driver/i2c.h"
 
 static void scan_i2c_bus(i2c_port_t port, const char *name)
@@ -108,6 +109,11 @@ void app_main(void)
     xl9555_init(i2c1_master);
     lcd_init();
 
+    /* 摄像头画面网页：SoftAP BGA4E-CAM + http://192.168.4.1/。
+     * 先启动网页，摄像头初始化失败时也能在网页上看到状态。 */
+    camera_web_set_camera_ready(0);
+    camera_web_start();
+
     lcd_show_string(20, 50, 280, 16, 16, "ESP32-S3", RED);
     lcd_show_string(20, 70, 280, 16, 16, "CARD RECOGNITION", RED);
     lcd_show_string(20, 90, 280, 16, 16, "MAHJONG / POKER", BLUE);
@@ -118,6 +124,7 @@ void app_main(void)
         vTaskDelay(pdMS_TO_TICKS(500));
     }
 
+    camera_web_set_camera_ready(1);
     lcd_clear(BLACK);
 
     while (esp_card_recognition_ai_start())
