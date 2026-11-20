@@ -29,13 +29,15 @@
 
 #define CAM_LED_IO                  0x0001
 #define QMA_INT_IO                  0x0002
+#define CAM_PWDN_IO                 0x0010      /* P0.4: camera power-down (active high) */
+#define CAM_RESET_IO                0x0020      /* P0.5: camera reset (active low) */
 #define KEY1_IO                     0x0010
 #define KEY2_IO                     0x0020
 #define KEY3_IO                     0x0040
 #define KEY4_IO                     0x0080
 #define AP_INT_IO                   0x0100
 #define TP_INT_IO                   0x0200
-#define LCD_BL_IO                   0x4000
+#define LCD_BL_IO                   0x0800      /* P1.3: LCD power/backlight (DNESP32S3) */
 #define SPK_EN_IO                   0x8000
 
 #define KEY1                        xl9555_pin_read(KEY1_IO)        /* 读取KEY1引脚 */

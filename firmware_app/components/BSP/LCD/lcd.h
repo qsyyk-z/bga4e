@@ -12,8 +12,8 @@
 
 
 /* 引脚定义 */
-#define LCD_NUM_WR      GPIO_NUM_3   /* DC引脚（Data/Command），参考AiXiaoZhi_Hiwonder的DISPLAY_DC_GPIO */
-#define LCD_NUM_CS      GPIO_NUM_2   /* CS引脚（片选），参考AiXiaoZhi_Hiwonder的DISPLAY_CS_GPIO */
+#define LCD_NUM_WR      GPIO_NUM_40  /* DC (Data/Command), DNESP32S3 LCD_DC=IO40 */
+#define LCD_NUM_CS      GPIO_NUM_21  /* CS, DNESP32S3 LCD_CS=IO21 */
 
 /* IO操作 */
 #define LCD_WR(x)       do{ x ? \

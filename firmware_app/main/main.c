@@ -15,6 +15,28 @@
 #include "led.h"
 #include "lcd.h"
 #include "esp_card_recognition.hpp"
+#include "driver/i2c.h"
+
+static void scan_i2c_bus(i2c_port_t port, const char *name)
+{
+    printf("I2C scan %s (SDA=%d SCL=%d):", name,
+           port == I2C_NUM_0 ? IIC0_SDA_GPIO_PIN : IIC1_SDA_GPIO_PIN,
+           port == I2C_NUM_0 ? IIC0_SCL_GPIO_PIN : IIC1_SCL_GPIO_PIN);
+    for (uint8_t addr = 1; addr < 127; ++addr)
+    {
+        i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+        i2c_master_start(cmd);
+        i2c_master_write_byte(cmd, (addr << 1) | I2C_MASTER_WRITE, true);
+        i2c_master_stop(cmd);
+        esp_err_t err = i2c_master_cmd_begin(port, cmd, 30 / portTICK_PERIOD_MS);
+        i2c_cmd_link_delete(cmd);
+        if (err == ESP_OK)
+        {
+            printf(" 0x%02X", addr);
+        }
+    }
+    printf("\n");
+}
 
 i2c_obj_t i2c0_master;
 i2c_obj_t i2c1_master;
@@ -80,6 +102,8 @@ void app_main(void)
     led_init();
     i2c0_master = iic_init(I2C_NUM_0);
     i2c1_master = iic_init(I2C_NUM_1);
+    scan_i2c_bus(I2C_NUM_0, "CAMERA/SCCB");
+    scan_i2c_bus(I2C_NUM_1, "XL9555");
     spi2_init();
     xl9555_init(i2c1_master);
     lcd_init();

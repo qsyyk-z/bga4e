@@ -110,7 +110,9 @@ int xl9555_pin_read(uint16_t pin)
  *   * P1.7-P1.0 = 全部输出 (0)
  * - 总计: 0x00F0
  */
-#define XL9555_IO_CONFIG_VALUE     0x00F0
+/* P0.4/P0.5 are camera PWDN/RESET outputs on DNESP32S3.
+ * 0x00C0 keeps P0.6/P0.7 as inputs and all other pins as outputs. */
+#define XL9555_IO_CONFIG_VALUE     0x00C0
 
 /**
  * @brief       XL9555的IO配置
@@ -141,8 +143,11 @@ uint16_t xl9555_ioconfig(uint16_t config_value)
             
             if ((retry <= 0) && xl9555_failed)
             {
-                vTaskDelay(5000); 
-                esp_restart();
+                /* Some camera boards do not populate the XL9555.  Do not
+                 * reboot forever just because the optional IO expander is
+                 * absent; the camera and USB serial still work without it. */
+                ESP_LOGW("IIC", "XL9555 not responding; continuing without IO expander");
+                return config_value;
             }
         }
         else
@@ -202,6 +207,13 @@ void xl9555_init(i2c_obj_t self)
      *  - P1.7 (SPK_EN_IO, bit 15)  -> 输出 (0)
      */
     xl9555_ioconfig(XL9555_IO_CONFIG_VALUE);
+
+    /* DNESP32S3 camera power/reset are on XL9555 P0.4/P0.5. */
+    xl9555_pin_write(CAM_PWDN_IO, 0);   /* PWDN low = camera powered */
+    xl9555_pin_write(CAM_RESET_IO, 0);  /* assert reset */
+    vTaskDelay(pdMS_TO_TICKS(10));
+    xl9555_pin_write(CAM_RESET_IO, 1);  /* release reset */
+    vTaskDelay(pdMS_TO_TICKS(20));
 
     xl9555_pin_write(SPK_EN_IO, 1);
     xl9555_pin_write(CAM_LED_IO, 0);

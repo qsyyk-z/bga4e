@@ -9,9 +9,11 @@
 
 
 /* 引脚定义 */
-#define SPI_MOSI_GPIO_PIN   GPIO_NUM_47         /* SPI2_MOSI */
-#define SPI_CLK_GPIO_PIN    GPIO_NUM_21         /* SPI2_CLK */
-#define SPI_MISO_GPIO_PIN   GPIO_NUM_14         /* SPI2_MISO */
+/* DNESP32S3 LCD SPI: MOSI=IO11, CLK=IO12, MISO=IO13.
+ * IO47 is camera VSYNC on this board, so the old 47/21/14 mapping broke the camera. */
+#define SPI_MOSI_GPIO_PIN   GPIO_NUM_11         /* SPI2_MOSI */
+#define SPI_CLK_GPIO_PIN    GPIO_NUM_12         /* SPI2_CLK */
+#define SPI_MISO_GPIO_PIN   GPIO_NUM_13         /* SPI2_MISO */
 
 /* 函数声明 */
 void spi2_init(void);                                                               /* 初始化SPI2 */

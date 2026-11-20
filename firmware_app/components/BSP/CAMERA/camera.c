@@ -6,11 +6,11 @@
      .pin_pwdn = CAM_PIN_PWDN,
      .pin_reset = CAM_PIN_RESET,
      .pin_xclk = CAM_PIN_XCLK,
-     /* 摄像头使用 IIC0（GPIO4/5），让摄像头使用已初始化的 IIC0 端口 */
-     /* XL9555 使用 IIC1（GPIO38/48），它们不会冲突 */
-     .pin_sccb_sda = -1,  /* -1 表示使用已初始化的 I2C 端口 */
-     .pin_sccb_scl = -1,  /* -1 表示使用已初始化的 I2C 端口 */
-     .sccb_i2c_port = I2C_NUM_0,  /* 使用 IIC0 端口（GPIO4/5） */
+     /* DNESP32S3: camera SCCB = SDA IO39 / SCL IO38 (I2C0).
+      * XL9555 = SDA IO41 / SCL IO42 (I2C1), so they do not conflict. */
+     .pin_sccb_sda = -1,  /* -1 = use the already initialized I2C port */
+     .pin_sccb_scl = -1,
+     .sccb_i2c_port = I2C_NUM_0,
      .pin_d7 = CAM_PIN_D7,
      .pin_d6 = CAM_PIN_D6,
      .pin_d5 = CAM_PIN_D5,
@@ -50,7 +50,7 @@
      } 
  
      /* 摄像头初始化 */
-     ESP_LOGI("CAMERA", "Initializing camera with I2C0 (GPIO4/5), XL9555 uses I2C1 (GPIO38/48) - no conflict");
+     ESP_LOGI("CAMERA", "Initializing OV5640: SCCB I2C0 SDA=39 SCL=38, XCLK=external");
      
      err = esp_camera_init(&camera_config);
  

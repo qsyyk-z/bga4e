@@ -28,10 +28,12 @@ extern i2c_obj_t iic_master[I2C_NUM_MAX];
 #define I2C_FLAG_WRITE                  (0x04)                                                          /* 写标志 */
 
 /* 引脚与相关参数定义 */
-#define IIC1_SDA_GPIO_PIN               GPIO_NUM_38                                                     /* IIC0_SDA引脚（用于XL9555） */
-#define IIC1_SCL_GPIO_PIN               GPIO_NUM_48                                                     /* IIC0_SCL引脚（用于XL9555） */
-#define IIC0_SDA_GPIO_PIN               GPIO_NUM_4                                                      /* IIC1_SDA引脚（用于ES8311等） */
-#define IIC0_SCL_GPIO_PIN               GPIO_NUM_5                                                      /* IIC1_SCL引脚（用于ES8311等） */
+/* DNESP32S3 (ALIENTEK): XL9555 is on SDA=IO41 / SCL=IO42.
+ * The camera SCCB bus is SDA=IO39 / SCL=IO38. */
+#define IIC1_SDA_GPIO_PIN               GPIO_NUM_41                                                     /* XL9555 SDA */
+#define IIC1_SCL_GPIO_PIN               GPIO_NUM_42                                                     /* XL9555 SCL */
+#define IIC0_SDA_GPIO_PIN               GPIO_NUM_39                                                     /* camera SCCB SDA */
+#define IIC0_SCL_GPIO_PIN               GPIO_NUM_38                                                     /* camera SCCB SCL */
 #define IIC_FREQ                        400000                                                          /* IIC通信频率 */
 #define I2C_MASTER_TX_BUF_DISABLE       0                                                               /* I2C主机不需要缓冲区 */
 #define I2C_MASTER_RX_BUF_DISABLE       0                                                               /* I2C主机不需要缓冲区 */
