@@ -76,33 +76,6 @@ lv_obj_t* MakeButton(lv_obj_t* parent, const char* text, int x, int y, int w, in
     return btn;
 }
 
-lv_obj_t* MakeTile(lv_obj_t* parent, const std::string& name, bool poker) {
-    lv_obj_t* tile = lv_obj_create(parent);
-    lv_obj_set_size(tile, poker ? 54 : 44, 56);
-    lv_obj_set_style_bg_color(tile, lv_color_white(), 0);
-    lv_obj_set_style_bg_opa(tile, LV_OPA_COVER, 0);
-    lv_obj_set_style_border_color(tile, lv_color_hex(0xCDBFA7), 0);
-    lv_obj_set_style_border_width(tile, 1, 0);
-    lv_obj_set_style_radius(tile, 6, 0);
-    lv_obj_set_style_pad_all(tile, 2, 0);
-    lv_obj_remove_flag(tile, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_t* label = lv_label_create(tile);
-    lv_label_set_text(label, name.c_str());
-    lv_obj_set_style_text_font(label, &font_puhui_20_4, 0);
-    lv_obj_set_style_text_color(label, lv_color_hex(COLOR_INK), 0);
-    lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_center(label);
-    return tile;
-}
-
-lv_obj_t* MakeHandTile(lv_obj_t* parent, const std::string& name, bool poker) {
-    lv_obj_t* tile = MakeTile(parent, name, poker);
-    lv_obj_add_flag(tile, LV_OBJ_FLAG_CLICKABLE);
-    // 让点在小字上的触摸也冒泡到牌块，统一由牌块处理出牌。
-    lv_obj_add_flag(lv_obj_get_child(tile, 0), LV_OBJ_FLAG_EVENT_BUBBLE);
-    return tile;
-}
-
 lv_obj_t* MakeMiniTile(lv_obj_t* parent, const std::string& name, int w, int h,
                        bool clickable) {
     lv_obj_t* tile = lv_obj_create(parent);
@@ -438,22 +411,36 @@ private:
 
     void UpdateSetupLocked() {
         if (setup_hint_ == nullptr) return;
+        bool poker = selected_type_ == GameType::kPoker;
+        if (poker && selected_seat_ != 1 && selected_seat_ != 3) {
+            selected_seat_ = 1;  // 扑克只有南北两家，默认坐南
+        }
         for (int i = 0; i < 2; ++i) {
             lv_obj_set_style_bg_color(type_buttons_[i],
                                       lv_color_hex(i == static_cast<int>(selected_type_)
                                                        ? COLOR_GOLD : COLOR_TABLE), 0);
         }
         for (int i = 0; i < 4; ++i) {
+            bool allowed = !poker || i == 1 || i == 3;
+            if (allowed) {
+                lv_obj_clear_flag(seat_buttons_[i], LV_OBJ_FLAG_HIDDEN);
+            } else {
+                lv_obj_add_flag(seat_buttons_[i], LV_OBJ_FLAG_HIDDEN);
+            }
             lv_obj_set_style_bg_color(seat_buttons_[i],
                                       lv_color_hex(i == selected_seat_ ? COLOR_GOLD
                                                                        : COLOR_TABLE), 0);
         }
-        char hint[160];
-        snprintf(hint, sizeof(hint), "已选择：%s · %s家。\n%s",
-                 LocalGame::TypeName(selected_type_), LocalGame::SeatName(selected_seat_),
-                 selected_type_ == GameType::kMahjong
-                     ? "下一步会提示通过摄像头读入手牌。"
-                     : "扑克会直接生成手牌并开始。");
+        const char* type_hint = poker ? "扑克（南北两家）" : "麻将（东南西北四家）";
+        const char* mode_hint = pending_demo_ ? "演示模式：自动摸打"
+                                              : "真实模式：等你操作";
+        char hint[220];
+        snprintf(hint, sizeof(hint), "%s · %s。\n已选择：%s · %s家。%s",
+                 mode_hint, type_hint, LocalGame::TypeName(selected_type_),
+                 LocalGame::SeatName(selected_seat_),
+                 poker ? "下一步直接发牌开始。"
+                       : (pending_demo_ ? "下一步直接生成手牌并开始。"
+                                        : "下一步会提示通过摄像头读入手牌。"));
         lv_label_set_text(setup_hint_, hint);
     }
 
@@ -469,7 +456,10 @@ private:
             LoadScreen(ready_screen_);
             return;
         }
+        ESP_LOGI(TAG, "start selected: type=%d seat=%d demo=%d skip_ready=%d",
+                 static_cast<int>(selected_type_), selected_seat_, demo, skip_ready);
         LocalGame::Instance().Start(selected_type_, selected_seat_, demo);
+        ESP_LOGI(TAG, "game started, active=%d", LocalGame::Instance().active());
         ShowGame();
     }
 
@@ -577,10 +567,10 @@ private:
             lv_label_set_text(hint_label_, "点“下一轮”重新发牌；先到 10 分获胜");
         } else if (view.awaiting_discard) {
             lv_label_set_text(hint_label_, "抽完牌后点自己的手牌弃掉，保持 5 张");
-        } else if (view.current_player == 0) {
-            lv_label_set_text(hint_label_, "摸一张或拿弃牌，然后弃一张；也可以喊 CABO");
         } else if (view.poker_can_cabo) {
             lv_label_set_text(hint_label_, "可以摸牌、拿弃牌，或直接喊 CABO（占本回合）");
+        } else if (view.current_player == 0) {
+            lv_label_set_text(hint_label_, "摸一张或拿弃牌，然后弃一张；也可以喊 CABO");
         } else {
             lv_label_set_text(hint_label_, "等待对手行动");
         }
@@ -919,12 +909,16 @@ private:
     static void OnOpenSetup(lv_event_t* e) {
         auto* self = static_cast<MahjongUiImpl*>(lv_event_get_user_data(e));
         DisplayLockGuard lock(self->display_);
+        self->pending_demo_ = false;
+        self->UpdateSetupLocked();
         self->LoadScreen(self->setup_screen_);
     }
     static void OnDemo(lv_event_t* e) {
         auto* self = static_cast<MahjongUiImpl*>(lv_event_get_user_data(e));
-        LocalGame::Instance().Start(self->selected_type_, self->selected_seat_, true);
-        self->ShowGame();
+        DisplayLockGuard lock(self->display_);
+        self->pending_demo_ = true;
+        self->UpdateSetupLocked();
+        self->LoadScreen(self->setup_screen_);
     }
     static void OnTypeMahjong(lv_event_t* e) {
         auto* self = static_cast<MahjongUiImpl*>(lv_event_get_user_data(e));
@@ -964,8 +958,14 @@ private:
     }
     static void OnSetupNext(lv_event_t* e) {
         auto* self = static_cast<MahjongUiImpl*>(lv_event_get_user_data(e));
+        bool demo = self->pending_demo_;
+        self->pending_demo_ = false;
+        ESP_LOGI(TAG, "setup next: type=%d seat=%d demo=%d",
+                 static_cast<int>(self->selected_type_), self->selected_seat_, demo);
         if (self->selected_type_ == GameType::kPoker) {
-            self->StartSelected(false, true);
+            self->StartSelected(demo, true);
+        } else if (demo) {
+            self->StartSelected(true, true);
         } else {
             DisplayLockGuard lock(self->display_);
             self->LoadScreen(self->ready_screen_);
@@ -1075,6 +1075,7 @@ private:
     lv_obj_t* seat_buttons_[4] = {};
     GameType selected_type_ = GameType::kMahjong;
     int selected_seat_ = 0;
+    bool pending_demo_ = false;
     TaskHandle_t task_ = nullptr;
 };
 
