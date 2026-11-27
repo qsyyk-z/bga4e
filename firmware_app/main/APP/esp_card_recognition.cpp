@@ -4,6 +4,7 @@
 #include "card_classifier_poker.hpp"
 #include "card_labels.hpp"
 #include "camera_web.h"
+#include "camera_serial.h"
 #include "dl_define.hpp"
 #include "dl_image.hpp"
 #include "fb_gfx.h"
@@ -304,6 +305,7 @@ static void card_ai_task(void *arg)
 
         /* 只有网页有客户端时才编码 JPEG，避免影响本地 LCD 帧率。 */
         camera_web_publish(frame);
+        camera_serial_publish(frame);
 
         if (xQueueAIFrameO)
         {

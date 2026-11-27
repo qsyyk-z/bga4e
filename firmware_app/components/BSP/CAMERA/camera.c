@@ -8,9 +8,9 @@
      .pin_xclk = CAM_PIN_XCLK,
      /* DNESP32S3: camera SCCB = SDA IO39 / SCL IO38 (I2C0).
       * XL9555 = SDA IO41 / SCL IO42 (I2C1), so they do not conflict. */
-     .pin_sccb_sda = -1,  /* -1 = use the already initialized I2C port */
-     .pin_sccb_scl = -1,
-     .sccb_i2c_port = I2C_NUM_0,
+     .pin_sccb_sda = CAM_PIN_SIOD,
+     .pin_sccb_scl = CAM_PIN_SIOC,
+     .sccb_i2c_port = -1,
      .pin_d7 = CAM_PIN_D7,
      .pin_d6 = CAM_PIN_D6,
      .pin_d5 = CAM_PIN_D5,
@@ -50,7 +50,7 @@
      } 
  
      /* 摄像头初始化 */
-     ESP_LOGI("CAMERA", "Initializing OV5640: SCCB I2C0 SDA=39 SCL=38, XCLK=external");
+     ESP_LOGI("CAMERA", "Initializing OV5640: SCCB SDA=8 SCL=7, XCLK=38");
      
      err = esp_camera_init(&camera_config);
  
@@ -62,7 +62,7 @@
  
      /* 摄像头使用 IIC0（GPIO4/5），XL9555 使用 IIC1（GPIO38/48），它们不会冲突 */
      /* 不需要更新 XL9555 的 I2C 对象，因为 XL9555 使用 IIC1，不会受到影响 */
-     ESP_LOGI("CAMERA", "Camera initialized successfully. Camera uses I2C0, XL9555 uses I2C1 - no conflict, keys should work normally");
+     ESP_LOGI("CAMERA", "Camera initialized successfully");
  
      sensor_t * s = esp_camera_sensor_get();
  

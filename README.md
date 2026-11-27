@@ -105,6 +105,17 @@ bga4e/
 
 > 4.3C 本身没有 DVP 摄像头接口。TF 卡路径是 `/sdcard/bga4e/cards.json`，格式支持数组、`{"hand":[...]}`、`{"cards":[...]}` 或单张对象；`backend/tools/camera_json_bridge.py` 可把摄像头串口输出的 JSON 存成每局一个 jsonl 和 `latest.json`。摄像头板没有 SD 卡槽，所以“摄像头模块自己每局写文件”仍需 SD 或额外存储；当前最稳的是把文件复制到 4.3C 的 TF 卡再点“SD读牌”。
 
+## 0.5 摄像头 USB 实时预览（不开热点）
+
+OV5640 画面走 USB 串口，由电脑本地网页显示，和烧录共用一个 COM 口：
+
+```powershell
+cd D:\M08\bga4e
+.\firmware_app\run_camera_viewer.ps1
+```
+
+浏览器打开 <http://127.0.0.1:8080/>。0.5 版本**不再启动** `BGA4E-CAM` 热点；旧的 `docs/camera-web.md` 仅作历史记录，当前用法见 `docs/camera-usb-view.md`。
+
 ---
 
 ## 1. 与 02_Face_recognition_project 的关系

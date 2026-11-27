@@ -14,30 +14,28 @@
  #include "lcd.h"
  
  
- /* DNESP32S3 (ALIENTEK) camera connector pinout.
-  * PWDN/RESET are driven by XL9555 P0.4/P0.5, not ESP32 GPIOs.
-  * SCCB uses I2C0: SDA=IO39, SCL=IO38 (see iic.h). */
- #define CAM_PIN_PWDN     GPIO_NUM_NC
- #define CAM_PIN_RESET    GPIO_NUM_NC
- #define CAM_PIN_XCLK     GPIO_NUM_NC  /* OV5640 module has its own clock */
- #define CAM_PIN_SIOD     GPIO_NUM_39  /* IIC0_SDA */
- #define CAM_PIN_SIOC     GPIO_NUM_38  /* IIC0_SCL */
- #define CAM_PIN_D7       GPIO_NUM_18
- #define CAM_PIN_D6       GPIO_NUM_17
- #define CAM_PIN_D5       GPIO_NUM_16
- #define CAM_PIN_D4       GPIO_NUM_15
- #define CAM_PIN_D3       GPIO_NUM_7
- #define CAM_PIN_D2       GPIO_NUM_6
- #define CAM_PIN_D1       GPIO_NUM_5
- #define CAM_PIN_D0       GPIO_NUM_4
- #define CAM_PIN_VSYNC    GPIO_NUM_47
- #define CAM_PIN_HREF     GPIO_NUM_48
- #define CAM_PIN_PCLK     GPIO_NUM_45
- 
- #define CAM_LED(x)         do{ x ? \
-                                 (xl9555_pin_write(CAM_LED_IO, 1)):       \
-                                 (xl9555_pin_write(CAM_LED_IO, 0));       \
-                             }while(0)
+ /* Waveshare ESP32-S3-CAM-OV5640 (ESP_EYE pin map).
+ * The running firmware on this board reports the same SCCB pins
+ * (SDA=IO8, SCL=IO7) and detects the OV5640 successfully. */
+#define CAM_PIN_PWDN     GPIO_NUM_NC
+#define CAM_PIN_RESET    GPIO_NUM_NC
+#define CAM_PIN_XCLK     GPIO_NUM_38
+#define CAM_PIN_SIOD     GPIO_NUM_8
+#define CAM_PIN_SIOC     GPIO_NUM_7
+#define CAM_PIN_D7       GPIO_NUM_21
+#define CAM_PIN_D6       GPIO_NUM_39
+#define CAM_PIN_D5       GPIO_NUM_40
+#define CAM_PIN_D4       GPIO_NUM_42
+#define CAM_PIN_D3       GPIO_NUM_46
+#define CAM_PIN_D2       GPIO_NUM_48
+#define CAM_PIN_D1       GPIO_NUM_47
+#define CAM_PIN_D0       GPIO_NUM_45
+#define CAM_PIN_VSYNC    GPIO_NUM_17
+#define CAM_PIN_HREF     GPIO_NUM_18
+#define CAM_PIN_PCLK     GPIO_NUM_41
+
+/* Camera-only build: no XL9555, camera power is already enabled. */
+#define CAM_LED(x)         do { (void)(x); } while (0)
  
  /* 函数声明 */
  uint8_t camera_init(void);                 /* 摄像头初始化 */
