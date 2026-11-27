@@ -33,5 +33,38 @@ if (-not (Test-Path $idfPy)) {
     exit 1
 }
 
+# Build/flash with IDF first. After a successful flash, also write the app to
+# the other OTA slot: this board's OTA data can point at ota_1, so flashing
+# only ota_0 would leave the old UI running.
+function Write-OtherOtaSlot {
+    param([string[]]$IdfArgs)
+
+    $pIndex = [Array]::IndexOf($IdfArgs, "-p")
+    if ($pIndex -lt 0) { $pIndex = [Array]::IndexOf($IdfArgs, "--port") }
+    if ($pIndex -lt 0 -or $pIndex + 1 -ge $IdfArgs.Count) {
+        Write-Host "WARN: no -p/--port given; skipped ota_1 mirror write"
+        return
+    }
+
+    $port = $IdfArgs[$pIndex + 1]
+    $app = Join-Path $PSScriptRoot "build\\AiXiaoZhi_Hiwonder.bin"
+    $esptool = Join-Path $env:IDF_PATH "components\\esptool_py\\esptool\\esptool.py"
+    if (-not (Test-Path $app)) {
+        Write-Host "WARN: app image not found: $app"
+        return
+    }
+
+    Write-Host "Writing app to ota_1 (0x840000) so both OTA slots match..."
+    & $python $esptool -p $port -b 460800 --before default_reset --after hard_reset write_flash 0x840000 $app
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "ERROR: ota_1 mirror write failed"
+        exit $LASTEXITCODE
+    }
+}
+
 & $python $idfPy @args
-exit $LASTEXITCODE
+$idfExit = $LASTEXITCODE
+if ($idfExit -eq 0 -and ($args -contains "flash")) {
+    Write-OtherOtaSlot -IdfArgs $args
+}
+exit $idfExit
