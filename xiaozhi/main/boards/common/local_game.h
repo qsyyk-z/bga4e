@@ -14,6 +14,7 @@ struct PlayerView {
     std::string name;
     std::vector<std::string> discards;
     std::vector<std::string> melds;
+    std::vector<std::string> hand;  // 演示模式显示四家；正式模式只显示自己
     int hand_count = 0;
     int meld_count = 0;
 };
@@ -21,18 +22,28 @@ struct PlayerView {
 struct GameView {
     bool active = false;
     bool finished = false;
+    bool demo = false;
     GameType type = GameType::kMahjong;
     int my_seat = 0;
     int current_player = 0;
     int wall_remaining = 0;
     int turn = 0;
+    int winner = -1;
     bool my_turn = false;
     bool awaiting_discard = false;
     bool can_discard = false;
+    bool can_hu = false;
+    bool awaiting_claim = false;
+    bool can_chi = false;
+    bool can_peng = false;
+    bool claim_can_hu = false;
     bool last_claimed = false;
     std::string current_name;
     std::string last_discard;
+    std::string claim_tile;
+    std::string result;
     int last_discard_player = -1;
+    int claim_from = -1;
     std::vector<std::string> my_hand;
     std::array<PlayerView, 4> players;
 };
@@ -83,8 +94,10 @@ public:
     // 出牌：按牌名指定，自动找第一张匹配的牌。
     bool DiscardTile(int player, const std::string& raw, std::string* error = nullptr);
 
-    // 吃/碰最近一张弃牌。kind: "chi"/"peng"/"吃"/"碰"。
+    // 吃/碰/胡最近一张弃牌。kind: "chi"/"peng"/"hu"/"吃"/"碰"/"胡"。
     bool Claim(int player, const std::string& kind, std::string* error = nullptr);
+    bool PassClaim(std::string* error = nullptr);
+    bool Hu(std::string* error = nullptr);  // 自己摸到胡牌
 
     bool SortHand(int player);
     bool SortMyHand();
@@ -115,7 +128,17 @@ private:
     bool DiscardIndexLocked(int player, int index, std::string* error);
     bool ClaimLocked(int player, const std::string& kind, std::string* error);
     bool ApplyClaimLocked(int player, int kind, int discarder, int tile);
-    bool TryAutoClaimLocked(int discarder, int tile);
+    bool TryResolveClaimsLocked(int discarder, int tile);
+    bool ShouldClaimLocked(int player, int kind, int tile) const;
+    bool CanWinLocked(int player, int extra_tile = -1) const;
+    bool CanHuOnDiscardLocked(int player, int tile) const;
+    void FinishWinLocked(int player, int tile, bool self_draw);
+    void HandleDiscardLocked(int player, int tile);
+    void PassClaimLocked();
+    bool HuLocked(int player, int tile, bool self_draw, std::string* error);
+    int CountTileLocked(int tile) const;
+    int RemainingVisibleLocked(int tile) const;
+    bool ValidateLocked(std::string* error = nullptr) const;
     void AdvanceAfterDiscardLocked(int player);
     bool DrawForPlayerLocked(int player);
     int ChooseDiscardLocked(int player) const;
@@ -133,6 +156,14 @@ private:
     bool demo_ = false;
     bool waiting_for_discard_ = false;
     bool last_claimed_ = false;
+    bool awaiting_claim_ = false;
+    bool claim_can_chi_ = false;
+    bool claim_can_peng_ = false;
+    bool claim_can_hu_ = false;
+    int claim_from_ = -1;
+    int claim_tile_ = -1;
+    int winner_ = -1;
+    std::string result_;
     GameType type_ = GameType::kMahjong;
     int my_seat_ = 0;
     int current_player_ = 0;

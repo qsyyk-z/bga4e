@@ -15,6 +15,8 @@
 
 #define TAG "MahjongUi"
 
+LV_FONT_DECLARE(font_puhui_14_1);
+LV_FONT_DECLARE(font_puhui_16_4);
 LV_FONT_DECLARE(font_puhui_20_4);
 LV_FONT_DECLARE(font_puhui_30_4);
 
@@ -98,6 +100,30 @@ lv_obj_t* MakeHandTile(lv_obj_t* parent, const std::string& name, bool poker) {
     lv_obj_add_flag(tile, LV_OBJ_FLAG_CLICKABLE);
     // 让点在小字上的触摸也冒泡到牌块，统一由牌块处理出牌。
     lv_obj_add_flag(lv_obj_get_child(tile, 0), LV_OBJ_FLAG_EVENT_BUBBLE);
+    return tile;
+}
+
+lv_obj_t* MakeMiniTile(lv_obj_t* parent, const std::string& name, int w, int h,
+                       bool clickable) {
+    lv_obj_t* tile = lv_obj_create(parent);
+    lv_obj_set_size(tile, w, h);
+    lv_obj_set_style_bg_color(tile, lv_color_white(), 0);
+    lv_obj_set_style_bg_opa(tile, LV_OPA_COVER, 0);
+    lv_obj_set_style_border_color(tile, lv_color_hex(0xCDBFA7), 0);
+    lv_obj_set_style_border_width(tile, 1, 0);
+    lv_obj_set_style_radius(tile, 4, 0);
+    lv_obj_set_style_pad_all(tile, 1, 0);
+    lv_obj_remove_flag(tile, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_t* label = lv_label_create(tile);
+    lv_label_set_text(label, name.c_str());
+    lv_obj_set_style_text_font(label, w >= 34 ? &font_puhui_16_4 : &font_puhui_14_1, 0);
+    lv_obj_set_style_text_color(label, lv_color_hex(COLOR_INK), 0);
+    lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_center(label);
+    if (clickable) {
+        lv_obj_add_flag(tile, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_add_flag(label, LV_OBJ_FLAG_EVENT_BUBBLE);
+    }
     return tile;
 }
 
@@ -293,59 +319,103 @@ private:
         MakeButton(top, "语音", 640, 11, 66, 36, OnChat, this);
         MakeButton(top, "菜单", 710, 11, 80, 36, OnMenu, this);
 
-        lv_obj_t* info = MakePanel(game_screen_, 12, 70, 500, 58);
+        lv_obj_t* info = MakePanel(game_screen_, 12, 64, 776, 40);
         turn_label_ = MakeLabel(info, "当前：— · 牌墙 —", &font_puhui_20_4,
-                                COLOR_INK, 14, 8, 470);
-        hint_label_ = MakeLabel(info, "", &font_puhui_20_4, COLOR_MUTED, 14, 32, 470);
+                                COLOR_INK, 12, 2, 750);
+        hint_label_ = MakeLabel(info, "", &font_puhui_14_1, COLOR_MUTED, 12, 22, 750);
 
-        lv_obj_t* players = MakePanel(game_screen_, 12, 138, 500, 190);
-        MakeLabel(players, "弃牌区（最近 10 张）", &font_puhui_20_4, COLOR_MUTED, 14, 4);
-        for (int i = 0; i < 4; ++i) {
-            discard_names_[i] = MakeLabel(players, "", &font_puhui_20_4, COLOR_INK,
-                                          4, 32 + i * 37, 62);
-            for (int j = 0; j < 10; ++j) {
-                lv_obj_t* cell = lv_obj_create(players);
-                lv_obj_set_pos(cell, 68 + j * 42, 30 + i * 37);
-                lv_obj_set_size(cell, 40, 30);
-                lv_obj_set_style_bg_color(cell, lv_color_hex(0xEFE8DA), 0);
-                lv_obj_set_style_bg_opa(cell, LV_OPA_COVER, 0);
-                lv_obj_set_style_border_color(cell, lv_color_hex(0xD8CDB9), 0);
-                lv_obj_set_style_border_width(cell, 1, 0);
-                lv_obj_set_style_radius(cell, 4, 0);
-                lv_obj_set_style_pad_all(cell, 0, 0);
-                lv_obj_remove_flag(cell, LV_OBJ_FLAG_SCROLLABLE);
-                discard_cells_[i][j] = cell;
-                discard_cell_labels_[i][j] = MakeLabel(cell, "", &font_puhui_20_4,
-                                                       COLOR_INK, 0, 4);
-                lv_obj_set_width(discard_cell_labels_[i][j], 40);
-                lv_obj_set_style_text_align(discard_cell_labels_[i][j],
-                                            LV_TEXT_ALIGN_CENTER, 0);
-            }
+        // 牌桌背景。四个玩家区按“自己永远在下家”旋转：下=自己，右=下家，上=对家，左=上家。
+        lv_obj_t* table = lv_obj_create(game_screen_);
+        lv_obj_set_pos(table, 12, 108);
+        lv_obj_set_size(table, 776, 304);
+        lv_obj_set_style_bg_color(table, lv_color_hex(COLOR_TABLE), 0);
+        lv_obj_set_style_bg_opa(table, LV_OPA_COVER, 0);
+        lv_obj_set_style_radius(table, 18, 0);
+        lv_obj_set_style_border_width(table, 0, 0);
+        lv_obj_remove_flag(table, LV_OBJ_FLAG_SCROLLABLE);
+
+        CreateZone(0, 150, 110, 500, 100, false, false);  // 对家
+        CreateZone(1, 656, 110, 132, 300, true, false);   // 下家（右）
+        CreateZone(2, 150, 304, 500, 106, false, true);   // 自己（下）
+        CreateZone(3, 12, 110, 132, 300, true, false);    // 上家（左）
+
+        lv_obj_t* center = MakePanel(game_screen_, 150, 214, 500, 84);
+        last_label_ = MakeLabel(center, "最近出牌：—", &font_puhui_16_4, COLOR_RED, 10, 2, 480);
+        advice_action_ = MakeLabel(center, "等待牌局…", &font_puhui_20_4, COLOR_TABLE,
+                                   10, 20, 480);
+        advice_reason_ = MakeLabel(center, "点击“建议”获取本地建议。",
+                                   &font_puhui_14_1, COLOR_INK, 10, 42, 480);
+        advice_meta_ = MakeLabel(center, "", &font_puhui_14_1, COLOR_MUTED, 10, 62, 480);
+        chi_btn_ = MakeButton(center, "吃", 8, 52, 62, 28, OnChi, this);
+        peng_btn_ = MakeButton(center, "碰", 76, 52, 62, 28, OnPeng, this);
+        hu_btn_ = MakeButton(center, "胡", 144, 52, 62, 28, OnHu, this);
+        pass_btn_ = MakeButton(center, "过", 212, 52, 62, 28, OnPass, this);
+        lv_obj_add_flag(chi_btn_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(peng_btn_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(hu_btn_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(pass_btn_, LV_OBJ_FLAG_HIDDEN);
+    }
+
+    struct ZoneUi {
+        lv_obj_t* panel = nullptr;
+        lv_obj_t* name = nullptr;
+        lv_obj_t* hand_row = nullptr;
+        lv_obj_t* discard_row = nullptr;
+        lv_obj_t* meld = nullptr;
+        lv_obj_t* discard_cells[10] = {};
+        lv_obj_t* discard_labels[10] = {};
+        bool vertical = false;
+        bool own = false;
+        int seat = 0;
+    };
+
+    void CreateZone(int index, int x, int y, int w, int h, bool vertical, bool own) {
+        ZoneUi& zone = zones_[index];
+        zone.vertical = vertical;
+        zone.own = own;
+        zone.panel = MakePanel(game_screen_, x, y, w, h);
+        zone.name = MakeLabel(zone.panel, "", &font_puhui_16_4, COLOR_INK, 8, 1, w - 16);
+
+        zone.hand_row = lv_obj_create(zone.panel);
+        lv_obj_set_pos(zone.hand_row, 8, 18);
+        lv_obj_set_size(zone.hand_row, w - 16, vertical ? 136 : (own ? 42 : 34));
+        lv_obj_set_style_bg_opa(zone.hand_row, LV_OPA_TRANSP, 0);
+        lv_obj_set_style_border_width(zone.hand_row, 0, 0);
+        lv_obj_set_style_pad_all(zone.hand_row, 0, 0);
+        lv_obj_set_style_pad_column(zone.hand_row, 2, 0);
+        lv_obj_set_style_pad_row(zone.hand_row, 2, 0);
+        lv_obj_set_flex_flow(zone.hand_row, LV_FLEX_FLOW_ROW_WRAP);
+        lv_obj_remove_flag(zone.hand_row, LV_OBJ_FLAG_SCROLLABLE);
+
+        zone.discard_row = lv_obj_create(zone.panel);
+        lv_obj_set_pos(zone.discard_row, 8, vertical ? 158 : (own ? 62 : 54));
+        lv_obj_set_size(zone.discard_row, w - 16, vertical ? 80 : 22);
+        lv_obj_set_style_bg_opa(zone.discard_row, LV_OPA_TRANSP, 0);
+        lv_obj_set_style_border_width(zone.discard_row, 0, 0);
+        lv_obj_set_style_pad_all(zone.discard_row, 0, 0);
+        lv_obj_set_style_pad_column(zone.discard_row, 2, 0);
+        lv_obj_set_style_pad_row(zone.discard_row, 2, 0);
+        lv_obj_set_flex_flow(zone.discard_row, LV_FLEX_FLOW_ROW_WRAP);
+        lv_obj_remove_flag(zone.discard_row, LV_OBJ_FLAG_SCROLLABLE);
+
+        for (int i = 0; i < 10; ++i) {
+            lv_obj_t* cell = lv_obj_create(zone.discard_row);
+            lv_obj_set_size(cell, vertical ? 34 : 34, vertical ? 18 : 20);
+            lv_obj_set_style_bg_color(cell, lv_color_hex(0xEFE8DA), 0);
+            lv_obj_set_style_bg_opa(cell, LV_OPA_COVER, 0);
+            lv_obj_set_style_border_color(cell, lv_color_hex(0xD8CDB9), 0);
+            lv_obj_set_style_border_width(cell, 1, 0);
+            lv_obj_set_style_radius(cell, 3, 0);
+            lv_obj_set_style_pad_all(cell, 0, 0);
+            lv_obj_remove_flag(cell, LV_OBJ_FLAG_SCROLLABLE);
+            zone.discard_cells[i] = cell;
+            zone.discard_labels[i] = MakeLabel(cell, "", &font_puhui_14_1, COLOR_INK, 0, 1);
+            lv_obj_set_size(zone.discard_labels[i], vertical ? 34 : 34, 18);
+            lv_obj_set_style_text_align(zone.discard_labels[i], LV_TEXT_ALIGN_CENTER, 0);
         }
 
-        lv_obj_t* last = MakePanel(game_screen_, 12, 334, 500, 64);
-        MakeLabel(last, "最近出牌", &font_puhui_20_4, COLOR_MUTED, 14, 6);
-        last_label_ = MakeLabel(last, "—", &font_puhui_30_4, COLOR_RED, 150, 12, 330);
-
-        lv_obj_t* advice = MakePanel(game_screen_, 524, 70, 264, 328);
-        MakeLabel(advice, "策略建议", &font_puhui_20_4, COLOR_MUTED, 14, 10);
-        advice_action_ = MakeLabel(advice, "等待牌局…", &font_puhui_30_4, COLOR_TABLE,
-                                   14, 46, 236);
-        advice_reason_ = MakeLabel(advice, "点击“建议”获取本地建议。",
-                                   &font_puhui_20_4, COLOR_INK, 14, 108, 236);
-        advice_meta_ = MakeLabel(advice, "", &font_puhui_20_4, COLOR_MUTED, 14, 278, 236);
-
-        lv_obj_t* hand_panel = MakePanel(game_screen_, 12, 406, 776, 66);
-        MakeLabel(hand_panel, "手牌", &font_puhui_20_4, COLOR_MUTED, 12, 20);
-        hand_row_ = lv_obj_create(hand_panel);
-        lv_obj_set_pos(hand_row_, 72, 5);
-        lv_obj_set_size(hand_row_, 692, 56);
-        lv_obj_set_style_bg_opa(hand_row_, LV_OPA_TRANSP, 0);
-        lv_obj_set_style_border_width(hand_row_, 0, 0);
-        lv_obj_set_style_pad_all(hand_row_, 0, 0);
-        lv_obj_set_style_pad_column(hand_row_, 3, 0);
-        lv_obj_set_flex_flow(hand_row_, LV_FLEX_FLOW_ROW);
-        lv_obj_remove_flag(hand_row_, LV_OBJ_FLAG_SCROLLABLE);
+        zone.meld = MakeLabel(zone.panel, "", &font_puhui_14_1, COLOR_MUTED, 8,
+                              vertical ? 242 : (own ? 86 : 78), w - 16);
     }
 
     void CreateChatReturnButton() {
@@ -390,6 +460,73 @@ private:
         ShowGame();
     }
 
+    void UpdateZone(ZoneUi& zone, const GameView& view, int rel) {
+        int seat = (view.my_seat + rel) % 4;
+        const PlayerView& player = view.players[seat];
+        zone.seat = seat;
+        bool hidden = !view.demo && seat != view.my_seat;
+
+        char name[96];
+        snprintf(name, sizeof(name), "%s%s  %d张%s", LocalGame::SeatName(seat),
+                 seat == view.current_player ? "·当前" : "",
+                 player.hand_count,
+                 player.meld_count > 0 ? (hidden ? " · 副露明牌" : " · 副露") : "");
+        lv_label_set_text(zone.name, name);
+
+        bool current = seat == view.current_player && !view.finished;
+        lv_obj_set_style_border_color(zone.panel,
+                                      lv_color_hex(current ? COLOR_GOLD : 0xD8CDB9), 0);
+        lv_obj_set_style_border_width(zone.panel, current ? 2 : 1, 0);
+
+        lv_obj_clean(zone.hand_row);
+        if (hidden) {
+            lv_obj_t* back = MakeLabel(zone.hand_row, "暗牌", &font_puhui_16_4,
+                                       COLOR_MUTED, 0, 0);
+            lv_obj_set_style_text_align(back, LV_TEXT_ALIGN_CENTER, 0);
+            lv_obj_set_width(back, zone.vertical ? 108 : 120);
+        } else {
+            for (const auto& tile_name : player.hand) {
+                int w = zone.own ? 32 : (zone.vertical ? 26 : 30);
+                int h = zone.own ? 38 : (zone.vertical ? 26 : 30);
+                lv_obj_t* tile = MakeMiniTile(zone.hand_row, tile_name, w, h,
+                                              zone.own && view.can_discard);
+                if (zone.own && view.can_discard) {
+                    lv_obj_add_event_cb(tile, OnTileClicked, LV_EVENT_CLICKED, this);
+                }
+            }
+        }
+
+        std::string meld_text;
+        for (const auto& meld : player.melds) {
+            if (!meld_text.empty()) {
+                meld_text += " ";
+            }
+            meld_text += meld;
+        }
+        lv_label_set_text(zone.meld, meld_text.empty() ? " " : meld_text.c_str());
+
+        const auto& discards = player.discards;
+        int start = std::max(0, static_cast<int>(discards.size()) - 10);
+        for (int j = 0; j < 10; ++j) {
+            int index = start + j;
+            lv_obj_t* cell = zone.discard_cells[j];
+            lv_obj_t* label = zone.discard_labels[j];
+            if (index < static_cast<int>(discards.size())) {
+                lv_label_set_text(label, discards[index].c_str());
+                bool latest = view.last_discard_player == seat &&
+                              index == static_cast<int>(discards.size()) - 1 &&
+                              !view.last_claimed;
+                lv_obj_set_style_bg_color(cell,
+                                          lv_color_hex(latest ? 0xF6E7B8 : 0xFFFFFF), 0);
+                lv_obj_set_style_border_color(cell, lv_color_hex(0xC8B89B), 0);
+            } else {
+                lv_label_set_text(label, "");
+                lv_obj_set_style_bg_color(cell, lv_color_hex(0xEFE8DA), 0);
+                lv_obj_set_style_border_color(cell, lv_color_hex(0xE0D6C5), 0);
+            }
+        }
+    }
+
     void UpdateGameLocked() {
         GameView view = LocalGame::Instance().View();
         if (!view.active) {
@@ -397,6 +534,7 @@ private:
             lv_label_set_text(game_status_, "未开始");
             lv_label_set_text(turn_label_, "当前：— · 牌墙 —");
             lv_label_set_text(hint_label_, "");
+            lv_label_set_text(last_label_, "最近出牌：—");
             return;
         }
 
@@ -405,17 +543,20 @@ private:
                  LocalGame::SeatName(view.my_seat));
         lv_label_set_text(game_title_, title);
 
-        char status[96];
+        char status[120];
         if (view.finished) {
-            snprintf(status, sizeof(status), "第 %d 巡 · 已结束", view.turn);
+            snprintf(status, sizeof(status), "第 %d 巡 · %s", view.turn, view.result.c_str());
         } else {
             snprintf(status, sizeof(status), "第 %d 巡 · 牌墙 %d", view.turn,
                      view.wall_remaining);
         }
         lv_label_set_text(game_status_, status);
 
-        char turn[180];
-        if (view.can_discard) {
+        char turn[220];
+        if (view.awaiting_claim) {
+            snprintf(turn, sizeof(turn), "当前：%s · 你可以对 %s 选择吃/碰/胡/过",
+                     view.current_name.c_str(), view.claim_tile.c_str());
+        } else if (view.can_discard) {
             snprintf(turn, sizeof(turn), "当前：%s（你）· 请点手牌出牌",
                      view.current_name.c_str());
         } else if (view.my_turn) {
@@ -426,52 +567,74 @@ private:
                      LocalGame::SeatName(view.my_seat));
         }
         lv_label_set_text(turn_label_, turn);
-        lv_label_set_text(hint_label_, view.finished ? "本局结束，点“菜单”重新开始" : "");
+
+        if (view.finished) {
+            lv_label_set_text(hint_label_, view.result.c_str());
+        } else if (view.awaiting_claim) {
+            lv_label_set_text(hint_label_, "点“吃/碰/胡”，或点“过”继续");
+        } else if (view.can_hu) {
+            lv_label_set_text(hint_label_, "已经成胡，点“胡”结算本局");
+        } else if (view.can_discard) {
+            lv_label_set_text(hint_label_, "点自己的手牌出牌；吃碰后手牌数会同步更新");
+        } else {
+            lv_label_set_text(hint_label_, "演示模式四家明牌；真实模式只显示对手牌数");
+        }
 
         if (view.last_discard.empty()) {
-            lv_label_set_text(last_label_, "—");
+            lv_label_set_text(last_label_, "最近出牌：—");
         } else {
             char last[120];
-            snprintf(last, sizeof(last), "%s：%s%s",
+            snprintf(last, sizeof(last), "最近出牌：%s %s%s",
                      LocalGame::SeatName(view.last_discard_player),
                      view.last_discard.c_str(), view.last_claimed ? "（已吃碰）" : "");
             lv_label_set_text(last_label_, last);
         }
 
-        lv_obj_clean(hand_row_);
-        for (const auto& name : view.my_hand) {
-            lv_obj_t* tile = MakeHandTile(hand_row_, name, view.type == GameType::kPoker);
-            lv_obj_add_event_cb(tile, OnTileClicked, LV_EVENT_CLICKED, this);
+        for (int rel = 0; rel < 4; ++rel) {
+            UpdateZone(zones_[rel], view, rel);
         }
 
-        for (int i = 0; i < 4; ++i) {
-            char name[64];
-            if (view.players[i].meld_count > 0) {
-                snprintf(name, sizeof(name), "%s%d+%d", view.players[i].name.c_str(),
-                         view.players[i].hand_count, view.players[i].meld_count);
-            } else {
-                snprintf(name, sizeof(name), "%s%d", view.players[i].name.c_str(),
-                         view.players[i].hand_count);
+        if (view.awaiting_claim) {
+            lv_obj_clear_flag(chi_btn_, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(peng_btn_, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(hu_btn_, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(pass_btn_, LV_OBJ_FLAG_HIDDEN);
+            if (!view.can_chi) {
+                lv_obj_add_flag(chi_btn_, LV_OBJ_FLAG_HIDDEN);
             }
-            lv_label_set_text(discard_names_[i], name);
-            const auto& discards = view.players[i].discards;
-            int start = std::max(0, static_cast<int>(discards.size()) - 10);
-            for (int j = 0; j < 10; ++j) {
-                int index = start + j;
-                lv_obj_t* cell = discard_cells_[i][j];
-                lv_obj_t* label = discard_cell_labels_[i][j];
-                if (index < static_cast<int>(discards.size())) {
-                    lv_label_set_text(label, discards[index].c_str());
-                    lv_obj_set_style_bg_color(cell, lv_color_white(), 0);
-                    lv_obj_set_style_border_color(cell, lv_color_hex(0xC8B89B), 0);
-                } else {
-                    lv_label_set_text(label, "");
-                    lv_obj_set_style_bg_color(cell, lv_color_hex(0xEFE8DA), 0);
-                    lv_obj_set_style_border_color(cell, lv_color_hex(0xE0D6C5), 0);
-                }
+            if (!view.can_peng) {
+                lv_obj_add_flag(peng_btn_, LV_OBJ_FLAG_HIDDEN);
             }
+            if (!view.claim_can_hu) {
+                lv_obj_add_flag(hu_btn_, LV_OBJ_FLAG_HIDDEN);
+            }
+        } else if (view.can_hu) {
+            lv_obj_add_flag(chi_btn_, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(peng_btn_, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(pass_btn_, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(hu_btn_, LV_OBJ_FLAG_HIDDEN);
+        } else {
+            lv_obj_add_flag(chi_btn_, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(peng_btn_, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(hu_btn_, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(pass_btn_, LV_OBJ_FLAG_HIDDEN);
         }
-        UpdateAdviceLocked();
+
+        if (view.awaiting_claim) {
+            char claim[160];
+            snprintf(claim, sizeof(claim), "可对 %s：%s%s%s", view.claim_tile.c_str(),
+                     view.can_chi ? "吃 " : "", view.can_peng ? "碰 " : "",
+                     view.claim_can_hu ? "胡" : "");
+            lv_label_set_text(advice_action_, claim);
+            lv_obj_add_flag(advice_reason_, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(advice_meta_, LV_OBJ_FLAG_HIDDEN);
+            lv_label_set_text(advice_reason_, "");
+            lv_label_set_text(advice_meta_, "");
+        } else {
+            lv_obj_clear_flag(advice_reason_, LV_OBJ_FLAG_HIDDEN);
+            lv_obj_clear_flag(advice_meta_, LV_OBJ_FLAG_HIDDEN);
+            UpdateAdviceLocked();
+        }
     }
 
     void UpdateAdviceLocked() {
@@ -498,6 +661,57 @@ private:
         self->UpdateGameLocked();
     }
 
+    static void OnChi(lv_event_t* e) {
+        auto* self = static_cast<MahjongUiImpl*>(lv_event_get_user_data(e));
+        std::string error;
+        bool ok = LocalGame::Instance().Claim(LocalGame::Instance().my_seat(), "chi", &error);
+        DisplayLockGuard lock(self->display_);
+        if (!ok) {
+            lv_label_set_text(self->hint_label_, error.c_str());
+            return;
+        }
+        self->UpdateGameLocked();
+    }
+
+    static void OnPeng(lv_event_t* e) {
+        auto* self = static_cast<MahjongUiImpl*>(lv_event_get_user_data(e));
+        std::string error;
+        bool ok = LocalGame::Instance().Claim(LocalGame::Instance().my_seat(), "peng", &error);
+        DisplayLockGuard lock(self->display_);
+        if (!ok) {
+            lv_label_set_text(self->hint_label_, error.c_str());
+            return;
+        }
+        self->UpdateGameLocked();
+    }
+
+    static void OnHu(lv_event_t* e) {
+        auto* self = static_cast<MahjongUiImpl*>(lv_event_get_user_data(e));
+        std::string error;
+        GameView view = LocalGame::Instance().View();
+        bool ok = view.awaiting_claim
+                      ? LocalGame::Instance().Claim(LocalGame::Instance().my_seat(), "hu", &error)
+                      : LocalGame::Instance().Hu(&error);
+        DisplayLockGuard lock(self->display_);
+        if (!ok) {
+            lv_label_set_text(self->hint_label_, error.c_str());
+            return;
+        }
+        self->UpdateGameLocked();
+    }
+
+    static void OnPass(lv_event_t* e) {
+        auto* self = static_cast<MahjongUiImpl*>(lv_event_get_user_data(e));
+        std::string error;
+        bool ok = LocalGame::Instance().PassClaim(&error);
+        DisplayLockGuard lock(self->display_);
+        if (!ok) {
+            lv_label_set_text(self->hint_label_, error.c_str());
+            return;
+        }
+        self->UpdateGameLocked();
+    }
+
     static void OnSort(lv_event_t* e) {
         auto* self = static_cast<MahjongUiImpl*>(lv_event_get_user_data(e));
         LocalGame::Instance().SortMyHand();
@@ -510,13 +724,15 @@ private:
             bool active = LocalGame::Instance().active();
             bool demo = LocalGame::Instance().demo();
             bool changed = false;
-            if (active && demo) {
+            if (active) {
+                // Tick 推进 AI 三家；真实模式轮到玩家时只停住，不替玩家摸打。
                 changed = LocalGame::Instance().Tick();
-            } else if (active) {
-                // 正式模式只帮玩家摸牌，不替他出牌；出牌必须由触控或语音确认。
-                GameView view = LocalGame::Instance().View();
-                if (view.my_turn && !view.awaiting_discard && !view.finished) {
-                    changed = LocalGame::Instance().DrawForMe();
+                if (!demo) {
+                    GameView view = LocalGame::Instance().View();
+                    if (view.my_turn && !view.awaiting_discard &&
+                        !view.awaiting_claim && !view.finished) {
+                        changed = LocalGame::Instance().DrawForMe() || changed;
+                    }
                 }
             }
             // 演示模式自动摸打；正式模式等待摄像头/语音通过 MCP 更新，
@@ -678,13 +894,14 @@ private:
     lv_obj_t* turn_label_ = nullptr;
     lv_obj_t* hint_label_ = nullptr;
     lv_obj_t* last_label_ = nullptr;
-    lv_obj_t* hand_row_ = nullptr;
-    lv_obj_t* discard_names_[4] = {};
-    lv_obj_t* discard_cells_[4][10] = {};
-    lv_obj_t* discard_cell_labels_[4][10] = {};
     lv_obj_t* advice_action_ = nullptr;
     lv_obj_t* advice_reason_ = nullptr;
     lv_obj_t* advice_meta_ = nullptr;
+    lv_obj_t* chi_btn_ = nullptr;
+    lv_obj_t* peng_btn_ = nullptr;
+    lv_obj_t* hu_btn_ = nullptr;
+    lv_obj_t* pass_btn_ = nullptr;
+    ZoneUi zones_[4] = {};
     lv_obj_t* type_buttons_[2] = {};
     lv_obj_t* seat_buttons_[4] = {};
     GameType selected_type_ = GameType::kMahjong;
