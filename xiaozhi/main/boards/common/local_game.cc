@@ -807,7 +807,7 @@ bool LocalGame::TickPokerLocked() {
         PokerShowdownLocked();
         return true;
     }
-    if (poker_.current == 0 && !demo_) return false;  // 本家操作，等按钮
+    if (poker_.current == 0) return false;  // 本家操作，等按钮；演示/真实都一样
 
     if (poker_.awaiting_draw) {
         if (poker_.wall.empty()) {
