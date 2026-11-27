@@ -312,7 +312,7 @@ private:
         lv_obj_set_style_border_width(top, 0, 0);
         lv_obj_remove_flag(top, LV_OBJ_FLAG_SCROLLABLE);
         game_title_ = MakeLabel(top, "离线牌局", &font_puhui_30_4, COLOR_GOLD, 18, 10);
-        game_status_ = MakeLabel(top, "准备中", &font_puhui_20_4, 0xD7E6DC, 300, 18, 190);
+        game_status_ = MakeLabel(top, "准备中", &font_puhui_20_4, 0xD7E6DC, 230, 18, 260);
 
         MakeButton(top, "建议", 500, 11, 66, 36, OnAdvice, this);
         MakeButton(top, "理牌", 570, 11, 66, 36, OnSort, this);
@@ -354,6 +354,19 @@ private:
         lv_obj_add_flag(peng_btn_, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(hu_btn_, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(pass_btn_, LV_OBJ_FLAG_HIDDEN);
+
+        poker_draw_btn_ = MakeButton(center, "摸牌", 8, 52, 76, 28,
+                                     OnPokerDraw, this);
+        poker_take_btn_ = MakeButton(center, "拿弃牌", 92, 52, 90, 28,
+                                     OnPokerTake, this);
+        poker_cabo_btn_ = MakeButton(center, "CABO", 190, 52, 76, 28,
+                                     OnPokerCabo, this);
+        poker_next_btn_ = MakeButton(center, "下一轮", 274, 52, 90, 28,
+                                     OnPokerNext, this);
+        lv_obj_add_flag(poker_draw_btn_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(poker_take_btn_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(poker_cabo_btn_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(poker_next_btn_, LV_OBJ_FLAG_HIDDEN);
     }
 
     struct ZoneUi {
@@ -460,14 +473,18 @@ private:
         ShowGame();
     }
 
-    void UpdateZone(ZoneUi& zone, const GameView& view, int rel) {
-        int seat = (view.my_seat + rel) % 4;
+    void UpdateZone(ZoneUi& zone, const GameView& view, int seat) {
         const PlayerView& player = view.players[seat];
         zone.seat = seat;
-        bool hidden = !view.demo && seat != view.my_seat;
+        zone.own = (seat == view.my_seat);
+        bool hidden = !view.demo && !zone.own;
+        if (view.poker) {
+            hidden = !zone.own && !view.demo && !view.poker_round_over;
+        }
 
         char name[96];
-        snprintf(name, sizeof(name), "%s%s  %d张%s", LocalGame::SeatName(seat),
+        snprintf(name, sizeof(name), "%s%s  %d张%s",
+                 view.poker ? player.name.c_str() : LocalGame::SeatName(seat),
                  seat == view.current_player ? "·当前" : "",
                  player.hand_count,
                  player.meld_count > 0 ? (hidden ? " · 副露明牌" : " · 副露") : "");
@@ -527,6 +544,89 @@ private:
         }
     }
 
+    void UpdatePokerLocked(const GameView& view) {
+        char title[96];
+        snprintf(title, sizeof(title), "Cabo 扑克 · 第 %d 轮", view.poker_round);
+        lv_label_set_text(game_title_, title);
+
+        char status[160];
+        if (view.poker_match_over) {
+            snprintf(status, sizeof(status), "比赛结束  你 %d : %d 对手",
+                     view.poker_score_me, view.poker_score_opp);
+        } else {
+            snprintf(status, sizeof(status), "你 %d : %d 对手 · 抽牌堆 %d",
+                     view.poker_score_me, view.poker_score_opp, view.wall_remaining);
+        }
+        lv_label_set_text(game_status_, status);
+
+        char turn[220];
+        if (view.poker_round_over) {
+            snprintf(turn, sizeof(turn), "本轮结束：%s", view.poker_result.c_str());
+        } else if (view.awaiting_discard) {
+            snprintf(turn, sizeof(turn), "当前：%s · 请点手牌弃一张",
+                     view.current_name.c_str());
+        } else {
+            snprintf(turn, sizeof(turn), "当前：%s · 摸一张或拿弃牌堆顶",
+                     view.current_name.c_str());
+        }
+        lv_label_set_text(turn_label_, turn);
+
+        if (view.poker_match_over) {
+            lv_label_set_text(hint_label_, view.poker_result.c_str());
+        } else if (view.poker_round_over) {
+            lv_label_set_text(hint_label_, "点“下一轮”重新发牌；先到 10 分获胜");
+        } else if (view.awaiting_discard) {
+            lv_label_set_text(hint_label_, "抽完牌后点自己的手牌弃掉，保持 5 张");
+        } else if (view.current_player == 0) {
+            lv_label_set_text(hint_label_, "摸一张或拿弃牌，然后弃一张；也可以喊 CABO");
+        } else if (view.poker_can_cabo) {
+            lv_label_set_text(hint_label_, "可以摸牌、拿弃牌，或直接喊 CABO（占本回合）");
+        } else {
+            lv_label_set_text(hint_label_, "等待对手行动");
+        }
+
+        if (view.last_discard.empty()) {
+            lv_label_set_text(last_label_, "弃牌堆：空");
+        } else {
+            char last[120];
+            snprintf(last, sizeof(last), "弃牌堆顶：%s（可拿）",
+                     view.last_discard.c_str());
+            lv_label_set_text(last_label_, last);
+        }
+
+        // 扑克只显示上下两家：上=对手，下=自己。
+        lv_obj_clear_flag(zones_[0].panel, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(zones_[2].panel, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(zones_[1].panel, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(zones_[3].panel, LV_OBJ_FLAG_HIDDEN);
+        UpdateZone(zones_[0], view, 1);
+        UpdateZone(zones_[2], view, 0);
+
+        lv_obj_add_flag(chi_btn_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(peng_btn_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(hu_btn_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(pass_btn_, LV_OBJ_FLAG_HIDDEN);
+
+        auto show = [](lv_obj_t* btn, bool visible) {
+            if (visible) lv_obj_clear_flag(btn, LV_OBJ_FLAG_HIDDEN);
+            else lv_obj_add_flag(btn, LV_OBJ_FLAG_HIDDEN);
+        };
+        show(poker_draw_btn_, view.poker_can_draw);
+        show(poker_take_btn_, view.poker_can_take);
+        show(poker_cabo_btn_, view.poker_can_cabo);
+        show(poker_next_btn_, view.poker_round_over && !view.poker_match_over);
+
+        if (view.poker_round_over) {
+            lv_label_set_text(advice_action_, view.poker_result.c_str());
+            lv_label_set_text(advice_reason_, view.poker_match_over
+                                                 ? "比赛结束，点“菜单”返回"
+                                                 : "点“下一轮”继续");
+            lv_label_set_text(advice_meta_, "");
+        } else {
+            UpdateAdviceLocked();
+        }
+    }
+
     void UpdateGameLocked() {
         GameView view = LocalGame::Instance().View();
         if (!view.active) {
@@ -537,6 +637,18 @@ private:
             lv_label_set_text(last_label_, "最近出牌：—");
             return;
         }
+        if (view.poker) {
+            UpdatePokerLocked(view);
+            return;
+        }
+        lv_obj_clear_flag(zones_[0].panel, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(zones_[1].panel, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(zones_[2].panel, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(zones_[3].panel, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(poker_draw_btn_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(poker_take_btn_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(poker_cabo_btn_, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(poker_next_btn_, LV_OBJ_FLAG_HIDDEN);
 
         char title[80];
         snprintf(title, sizeof(title), "离线%s · %s家", LocalGame::TypeName(view.type),
@@ -590,9 +702,11 @@ private:
             lv_label_set_text(last_label_, last);
         }
 
-        for (int rel = 0; rel < 4; ++rel) {
-            UpdateZone(zones_[rel], view, rel);
-        }
+        // 按现实方位固定：上北、右东、下南、左西。
+        UpdateZone(zones_[0], view, 3);
+        UpdateZone(zones_[1], view, 0);
+        UpdateZone(zones_[2], view, 1);
+        UpdateZone(zones_[3], view, 2);
 
         if (view.awaiting_claim) {
             lv_obj_clear_flag(chi_btn_, LV_OBJ_FLAG_HIDDEN);
@@ -651,8 +765,11 @@ private:
         lv_obj_t* target = static_cast<lv_obj_t*>(lv_event_get_current_target(e));
         int index = lv_obj_get_index(target);
         std::string error;
-        bool ok = LocalGame::Instance().DiscardIndex(
-            LocalGame::Instance().my_seat(), index, &error);
+        GameView view = LocalGame::Instance().View();
+        bool ok = view.poker
+                      ? LocalGame::Instance().PokerDiscard(index, &error)
+                      : LocalGame::Instance().DiscardIndex(
+                            LocalGame::Instance().my_seat(), index, &error);
         DisplayLockGuard lock(self->display_);
         if (!ok) {
             lv_label_set_text(self->hint_label_, error.c_str());
@@ -704,6 +821,54 @@ private:
         auto* self = static_cast<MahjongUiImpl*>(lv_event_get_user_data(e));
         std::string error;
         bool ok = LocalGame::Instance().PassClaim(&error);
+        DisplayLockGuard lock(self->display_);
+        if (!ok) {
+            lv_label_set_text(self->hint_label_, error.c_str());
+            return;
+        }
+        self->UpdateGameLocked();
+    }
+
+    static void OnPokerDraw(lv_event_t* e) {
+        auto* self = static_cast<MahjongUiImpl*>(lv_event_get_user_data(e));
+        std::string error;
+        bool ok = LocalGame::Instance().PokerDraw(&error);
+        DisplayLockGuard lock(self->display_);
+        if (!ok) {
+            lv_label_set_text(self->hint_label_, error.c_str());
+            return;
+        }
+        self->UpdateGameLocked();
+    }
+
+    static void OnPokerTake(lv_event_t* e) {
+        auto* self = static_cast<MahjongUiImpl*>(lv_event_get_user_data(e));
+        std::string error;
+        bool ok = LocalGame::Instance().PokerTakeDiscard(&error);
+        DisplayLockGuard lock(self->display_);
+        if (!ok) {
+            lv_label_set_text(self->hint_label_, error.c_str());
+            return;
+        }
+        self->UpdateGameLocked();
+    }
+
+    static void OnPokerCabo(lv_event_t* e) {
+        auto* self = static_cast<MahjongUiImpl*>(lv_event_get_user_data(e));
+        std::string error;
+        bool ok = LocalGame::Instance().PokerCabo(&error);
+        DisplayLockGuard lock(self->display_);
+        if (!ok) {
+            lv_label_set_text(self->hint_label_, error.c_str());
+            return;
+        }
+        self->UpdateGameLocked();
+    }
+
+    static void OnPokerNext(lv_event_t* e) {
+        auto* self = static_cast<MahjongUiImpl*>(lv_event_get_user_data(e));
+        std::string error;
+        bool ok = LocalGame::Instance().PokerNextRound(&error);
         DisplayLockGuard lock(self->display_);
         if (!ok) {
             lv_label_set_text(self->hint_label_, error.c_str());
@@ -901,6 +1066,10 @@ private:
     lv_obj_t* peng_btn_ = nullptr;
     lv_obj_t* hu_btn_ = nullptr;
     lv_obj_t* pass_btn_ = nullptr;
+    lv_obj_t* poker_draw_btn_ = nullptr;
+    lv_obj_t* poker_take_btn_ = nullptr;
+    lv_obj_t* poker_cabo_btn_ = nullptr;
+    lv_obj_t* poker_next_btn_ = nullptr;
     ZoneUi zones_[4] = {};
     lv_obj_t* type_buttons_[2] = {};
     lv_obj_t* seat_buttons_[4] = {};

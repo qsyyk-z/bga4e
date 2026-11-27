@@ -38,6 +38,17 @@ struct GameView {
     bool can_peng = false;
     bool claim_can_hu = false;
     bool last_claimed = false;
+    // 扑克双人 Cabo 规则
+    bool poker = false;
+    bool poker_can_draw = false;
+    bool poker_can_take = false;
+    bool poker_can_cabo = false;
+    bool poker_round_over = false;
+    bool poker_match_over = false;
+    int poker_score_me = 0;
+    int poker_score_opp = 0;
+    int poker_round = 1;
+    std::string poker_result;
     std::string current_name;
     std::string last_discard;
     std::string claim_tile;
@@ -99,6 +110,13 @@ public:
     bool PassClaim(std::string* error = nullptr);
     bool Hu(std::string* error = nullptr);  // 自己摸到胡牌
 
+    // 扑克双人 Cabo：盲抽、拿弃牌堆顶、弃一张、喊 Cabo、下一轮。
+    bool PokerDraw(std::string* error = nullptr);
+    bool PokerTakeDiscard(std::string* error = nullptr);
+    bool PokerDiscard(int index, std::string* error = nullptr);
+    bool PokerCabo(std::string* error = nullptr);
+    bool PokerNextRound(std::string* error = nullptr);
+
     bool SortHand(int player);
     bool SortMyHand();
 
@@ -116,10 +134,45 @@ private:
         std::array<int, 3> tiles{};
     };
 
+    struct PokerState {
+        bool active = false;
+        int my_seat = 0;
+        int opp_seat = 2;
+        int scores[2] = {0, 0};
+        int round = 1;
+        std::vector<int> hands[2];
+        std::vector<int> wall;
+        std::vector<int> discards;
+        int current = 0;
+        int cabo_by = -1;
+        bool awaiting_draw = false;
+        bool awaiting_discard = false;
+        bool round_over = false;
+        bool match_over = false;
+        int winner = -1;
+        std::string result;
+    };
+
     LocalGame() = default;
     ~LocalGame() = default;
     LocalGame(const LocalGame&) = delete;
     LocalGame& operator=(const LocalGame&) = delete;
+
+    void StartPokerMatchLocked(int my_seat);
+    void StartPokerRoundLocked();
+    bool TickPokerLocked();
+    bool DrawPokerLocked(bool take_discard, std::string* error);
+    bool DiscardPokerLocked(int index, std::string* error);
+    bool CaboPokerLocked(std::string* error);
+    bool NextPokerRoundLocked(std::string* error);
+    void FinishPokerRoundLocked(bool cabo);
+    void PokerShowdownLocked();
+    int ChoosePokerDiscardLocked(int player) const;
+    int BestPokerDrawChoiceLocked(int player) const;
+    bool PokerShouldCaboLocked(int player) const;
+    int PokerHandScoreLocked(int player) const;
+    GameView ViewPokerLocked(int seat) const;
+    AdviceView AdvicePokerLocked(int seat) const;
 
     void StartLocked(GameType type, int my_seat, bool demo);
     bool TickLocked();
@@ -174,4 +227,5 @@ private:
     std::array<std::vector<int>, 4> hands_;
     std::array<std::vector<int>, 4> discards_;
     std::array<std::vector<Meld>, 4> melds_;
+    PokerState poker_;
 };

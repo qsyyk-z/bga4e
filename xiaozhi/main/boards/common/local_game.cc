@@ -15,7 +15,7 @@
 namespace {
 
 constexpr int kMahjongKinds = 34;
-constexpr int kPokerCards = 52;
+constexpr int kPokerCards = 54;
 
 const char* kMahjongNames[kMahjongKinds] = {
     "一万", "二万", "三万", "四万", "五万", "六万", "七万", "八万", "九万",
@@ -58,7 +58,11 @@ std::string Join(const std::vector<int>& tiles, int limit, bool poker) {
             static const char* suits[4] = {"黑", "红", "梅", "方"};
             static const char* ranks[13] = {"2", "3", "4", "5", "6", "7", "8", "9",
                                             "10", "J", "Q", "K", "A"};
-            if (tile >= 0 && tile < kPokerCards) {
+            if (tile == 52) {
+                out += "小王";
+            } else if (tile == 53) {
+                out += "大王";
+            } else if (tile >= 0 && tile < 52) {
                 out += ranks[tile % 13];
                 out += suits[tile / 13];
             }
@@ -157,6 +161,133 @@ bool IsPokerRankFirst(int a, int b) {
     int rank_b = b % 13;
     if (rank_a != rank_b) return rank_a < rank_b;
     return a / 13 < b / 13;
+}
+
+// 5 张牌牌型；key 越大牌越好。0=高牌,1=一对,2=两对,3=三条,4=顺子,
+// 5=同花,6=葫芦,7=四条,8=同花顺。
+std::array<int, 6> EvalPoker5(const std::array<int, 5>& cards) {
+    int counts[13] = {0};
+    int suits[4] = {0};
+    for (int card : cards) {
+        counts[card % 13]++;
+        suits[card / 13]++;
+    }
+    bool flush = false;
+    for (int suit = 0; suit < 4; ++suit) {
+        if (suits[suit] == 5) flush = true;
+    }
+
+    std::vector<int> unique;
+    for (int rank = 0; rank < 13; ++rank) {
+        if (counts[rank] > 0) unique.push_back(rank);
+    }
+    bool straight = false;
+    int straight_high = -1;
+    if (unique.size() == 5) {
+        if (unique[4] - unique[0] == 4) {
+            straight = true;
+            straight_high = unique[4];
+        } else if (unique[0] == 0 && unique[1] == 1 && unique[2] == 2 &&
+                   unique[3] == 3 && unique[4] == 12) {
+            straight = true;
+            straight_high = 3;  // A-2-3-4-5，5 为最大
+        }
+    }
+
+    std::vector<std::pair<int, int>> groups;  // (数量, 点数)
+    for (int rank = 0; rank < 13; ++rank) {
+        if (counts[rank] > 0) groups.push_back({counts[rank], rank});
+    }
+    std::sort(groups.begin(), groups.end(), [](const auto& a, const auto& b) {
+        if (a.first != b.first) return a.first > b.first;
+        return a.second > b.second;
+    });
+
+    int category = 0;
+    if (groups[0].first == 5) category = 9;
+    else if (straight && flush) category = 8;
+    else if (groups[0].first == 4) category = 7;
+    else if (groups[0].first == 3 && groups.size() > 1 && groups[1].first == 2) category = 6;
+    else if (flush) category = 5;
+    else if (straight) category = 4;
+    else if (groups[0].first == 3) category = 3;
+    else if (groups[0].first == 2 && groups.size() > 1 && groups[1].first == 2) category = 2;
+    else if (groups[0].first == 2) category = 1;
+
+    std::array<int, 6> key{};  // key[0]=牌型，key[1..] 为比较点数
+    key[0] = category;
+    if (category == 4 || category == 8) {
+        key[1] = straight_high;
+        return key;
+    }
+    if (category == 0 || category == 5) {
+        for (int i = 0; i < 5; ++i) key[1 + i] = unique[4 - i];
+        return key;
+    }
+    int pos = 1;
+    for (const auto& group : groups) {
+        for (int i = 0; i < group.first && pos < 6; ++i) {
+            key[pos++] = group.second;
+        }
+    }
+    return key;
+}
+
+std::array<int, 6> BestPokerEval5(const std::vector<int>& hand) {
+    std::array<int, 6> best{};
+    bool has = false;
+    std::vector<int> base;
+    std::vector<int> jokers;
+    for (int card : hand) {
+        if (card >= 52) jokers.push_back(card);
+        else base.push_back(card);
+    }
+    auto consider = [&](const std::array<int, 5>& cards) {
+        auto eval = EvalPoker5(cards);
+        if (!has || eval > best) {
+            best = eval;
+            has = true;
+        }
+    };
+    if (jokers.empty()) {
+        if (base.size() != 5) return best;
+        consider({base[0], base[1], base[2], base[3], base[4]});
+        return best;
+    }
+    if (jokers.size() == 1) {
+        for (int card = 0; card < 52; ++card) {
+            consider({base[0], base[1], base[2], base[3], card});
+        }
+        return best;
+    }
+    if (jokers.size() == 2) {
+        for (int c1 = 0; c1 < 52; ++c1) {
+            for (int c2 = 0; c2 < 52; ++c2) {
+                consider({base[0], base[1], base[2], c1, c2});
+            }
+        }
+    }
+    return best;
+}
+
+std::array<int, 6> BestPokerEvalFromHand(const std::vector<int>& hand) {
+    std::array<int, 6> best{};
+    bool has = false;
+    if (hand.size() < 5) return best;
+    if (hand.size() == 5) return BestPokerEval5(hand);
+    for (size_t skip = 0; skip < hand.size(); ++skip) {
+        std::vector<int> five;
+        for (size_t i = 0; i < hand.size(); ++i) {
+            if (i != skip) five.push_back(hand[i]);
+        }
+        if (five.size() != 5) continue;
+        auto eval = BestPokerEval5(five);
+        if (!has || eval > best) {
+            best = eval;
+            has = true;
+        }
+    }
+    return best;
 }
 
 // 标准型和牌向听：4 个面子 + 1 个雀头。exposed 是已经吃/碰的面子数。
@@ -442,6 +573,11 @@ void LocalGame::StartLocked(GameType type, int my_seat, bool demo) {
     type_ = type;
     my_seat_ = std::max(0, std::min(3, my_seat));
     demo_ = demo;
+    if (type_ == GameType::kPoker) {
+        StartPokerMatchLocked(my_seat_);
+        return;
+    }
+    poker_ = PokerState{};
     active_ = true;
     finished_ = false;
     waiting_for_discard_ = false;
@@ -501,6 +637,7 @@ void LocalGame::Stop() {
     awaiting_claim_ = false;
     winner_ = -1;
     result_.clear();
+    poker_ = PokerState{};
     wall_.clear();
     for (auto& hand : hands_) hand.clear();
     for (auto& discard : discards_) discard.clear();
@@ -514,6 +651,7 @@ bool LocalGame::Tick() {
 
 bool LocalGame::DrawForMe() {
     std::lock_guard<std::mutex> lock(mutex_);
+    if (type_ == GameType::kPoker) return false;
     if (!active_ || finished_ || demo_ || awaiting_claim_ || waiting_for_discard_ ||
         current_player_ != my_seat_) {
         return false;
@@ -530,6 +668,9 @@ bool LocalGame::DrawForMe() {
 bool LocalGame::TickLocked() {
     if (!active_ || finished_) {
         return false;
+    }
+    if (type_ == GameType::kPoker) {
+        return TickPokerLocked();
     }
     if (awaiting_claim_) {
         return false;  // 等玩家选择吃/碰/胡/过
@@ -606,6 +747,352 @@ void LocalGame::HandleDiscardLocked(int player, int tile) {
 
 void LocalGame::AdvanceAfterDiscardLocked(int player) {
     HandleDiscardLocked(player, last_tile_);
+}
+
+void LocalGame::StartPokerMatchLocked(int my_seat) {
+    poker_ = PokerState{};
+    poker_.active = true;
+    poker_.my_seat = std::max(0, std::min(3, my_seat));
+    poker_.opp_seat = (poker_.my_seat + 2) % 4;
+    poker_.round = 1;
+    poker_.scores[0] = 0;
+    poker_.scores[1] = 0;
+    active_ = true;
+    finished_ = false;
+    waiting_for_discard_ = false;
+    awaiting_claim_ = false;
+    winner_ = -1;
+    result_.clear();
+    StartPokerRoundLocked();
+}
+
+void LocalGame::StartPokerRoundLocked() {
+    poker_.hands[0].clear();
+    poker_.hands[1].clear();
+    poker_.wall.clear();
+    poker_.discards.clear();
+    poker_.current = 0;  // 每轮本家先手
+    poker_.cabo_by = -1;
+    poker_.awaiting_draw = true;
+    poker_.awaiting_discard = false;
+    poker_.round_over = false;
+    poker_.match_over = false;
+    poker_.winner = -1;
+    poker_.result.clear();
+
+    std::vector<int> deck;
+    for (int card = 0; card < kPokerCards; ++card) deck.push_back(card);
+    std::mt19937 rng(esp_random());
+    std::shuffle(deck.begin(), deck.end(), rng);
+    for (int i = 0; i < 5; ++i) {
+        poker_.hands[0].push_back(deck.back());
+        deck.pop_back();
+        poker_.hands[1].push_back(deck.back());
+        deck.pop_back();
+    }
+    std::sort(poker_.hands[0].begin(), poker_.hands[0].end(), IsPokerRankFirst);
+    std::sort(poker_.hands[1].begin(), poker_.hands[1].end(), IsPokerRankFirst);
+    poker_.wall = std::move(deck);
+    active_ = true;
+    finished_ = false;
+    ESP_LOGI(TAG, "poker round %d started, wall %d, score %d:%d",
+             poker_.round, static_cast<int>(poker_.wall.size()),
+             poker_.scores[0], poker_.scores[1]);
+}
+
+bool LocalGame::TickPokerLocked() {
+    if (!poker_.active || poker_.round_over || poker_.match_over) return false;
+    if (!poker_.awaiting_draw && !poker_.awaiting_discard) return false;
+    if (poker_.awaiting_draw && poker_.wall.empty()) {
+        PokerShowdownLocked();
+        return true;
+    }
+    if (poker_.current == 0 && !demo_) return false;  // 本家操作，等按钮
+
+    if (poker_.awaiting_draw) {
+        if (poker_.wall.empty()) {
+            PokerShowdownLocked();
+            return true;
+        }
+        if (poker_.cabo_by < 0 && PokerShouldCaboLocked(poker_.current)) {
+            std::string error;
+            return CaboPokerLocked(&error);
+        }
+        bool take = BestPokerDrawChoiceLocked(poker_.current) == 1;
+        std::string error;
+        if (!DrawPokerLocked(take, &error)) {
+            PokerShowdownLocked();
+            return true;
+        }
+    }
+    if (poker_.awaiting_discard) {
+        int index = ChoosePokerDiscardLocked(poker_.current);
+        std::string error;
+        if (!DiscardPokerLocked(index, &error)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool LocalGame::DrawPokerLocked(bool take_discard, std::string* error) {
+    if (!poker_.active || poker_.round_over || poker_.match_over) {
+        if (error) *error = "牌局已结束";
+        return false;
+    }
+    if (!poker_.awaiting_draw) {
+        if (error) *error = "现在不能抽牌";
+        return false;
+    }
+    int card = -1;
+    if (take_discard) {
+        if (poker_.discards.empty()) {
+            if (error) *error = "弃牌堆是空的";
+            return false;
+        }
+        card = poker_.discards.back();
+        poker_.discards.pop_back();
+    } else {
+        if (poker_.wall.empty()) {
+            if (error) *error = "抽牌堆已经空了";
+            return false;
+        }
+        card = poker_.wall.back();
+        poker_.wall.pop_back();
+    }
+    poker_.hands[poker_.current].push_back(card);
+    std::sort(poker_.hands[poker_.current].begin(), poker_.hands[poker_.current].end(),
+              IsPokerRankFirst);
+    poker_.awaiting_draw = false;
+    poker_.awaiting_discard = true;
+    return true;
+}
+
+bool LocalGame::DiscardPokerLocked(int index, std::string* error) {
+    if (!poker_.active || poker_.round_over || poker_.match_over) {
+        if (error) *error = "牌局已结束";
+        return false;
+    }
+    if (!poker_.awaiting_discard) {
+        if (error) *error = "请先抽一张牌";
+        return false;
+    }
+    auto& hand = poker_.hands[poker_.current];
+    if (index < 0 || index >= static_cast<int>(hand.size())) {
+        if (error) *error = "手牌下标无效";
+        return false;
+    }
+    int card = hand[index];
+    hand.erase(hand.begin() + index);
+    poker_.discards.push_back(card);
+    poker_.awaiting_discard = false;
+    poker_.awaiting_draw = true;
+
+    if (poker_.cabo_by >= 0) {
+        PokerShowdownLocked();
+    } else if (poker_.wall.empty()) {
+        PokerShowdownLocked();
+    } else {
+        poker_.current = 1 - poker_.current;
+    }
+    return true;
+}
+
+bool LocalGame::CaboPokerLocked(std::string* error) {
+    if (!poker_.active || poker_.round_over || poker_.match_over) {
+        if (error) *error = "牌局已结束";
+        return false;
+    }
+    if (!poker_.awaiting_draw || poker_.cabo_by >= 0) {
+        if (error) *error = "现在不能喊 Cabo";
+        return false;
+    }
+    int caller = poker_.current;
+    poker_.cabo_by = caller;
+    poker_.current = 1 - caller;  // 对手获得最后一个回合
+    poker_.awaiting_draw = true;
+    poker_.awaiting_discard = false;
+    poker_.result = caller == 0 ? "你喊了 Cabo，对手最后一回合" : "对手喊了 Cabo，你最后一回合";
+    ESP_LOGI(TAG, "poker cabo by %d", caller);
+    return true;
+}
+
+bool LocalGame::NextPokerRoundLocked(std::string* error) {
+    if (!poker_.active || !poker_.round_over) {
+        if (error) *error = "本轮还没有结束";
+        return false;
+    }
+    if (poker_.match_over) {
+        if (error) *error = "比赛已经结束";
+        return false;
+    }
+    poker_.round++;
+    StartPokerRoundLocked();
+    return true;
+}
+
+void LocalGame::PokerShowdownLocked() {
+    FinishPokerRoundLocked(poker_.cabo_by >= 0);
+}
+
+void LocalGame::FinishPokerRoundLocked(bool cabo) {
+    auto a = BestPokerEvalFromHand(poker_.hands[0]);
+    auto b = BestPokerEvalFromHand(poker_.hands[1]);
+    int winner = -1;
+    if (a > b) winner = 0;
+    else if (b > a) winner = 1;
+    poker_.winner = winner;
+
+    int caller = poker_.cabo_by;
+    std::string result;
+    if (winner < 0) {
+        result = "平局，本轮重发";
+    } else if (cabo && caller >= 0) {
+        if (winner == caller) {
+            poker_.scores[winner] += 2;
+            result = (winner == 0 ? "你" : "对手") + std::string(" Cabo 成功，+2");
+        } else {
+            poker_.scores[1 - winner] += 2;
+            result = (winner == 0 ? "你" : "对手") + std::string(" Cabo 失败，对方 +2");
+        }
+    } else {
+        poker_.scores[winner] += 1;
+        result = (winner == 0 ? "你" : "对手") + std::string(" 亮牌获胜，+1");
+    }
+    if (poker_.scores[0] >= 10 || poker_.scores[1] >= 10) {
+        poker_.match_over = true;
+        poker_.winner = poker_.scores[0] >= 10 ? 0 : 1;
+        result += "；比赛结束，" + std::string(poker_.winner == 0 ? "你" : "对手") + "先到 10 分";
+    }
+    poker_.result = result;
+    poker_.round_over = true;
+    finished_ = true;
+    result_ = result;
+    ESP_LOGI(TAG, "poker showdown: %s (score %d:%d)", result.c_str(),
+             poker_.scores[0], poker_.scores[1]);
+}
+
+int LocalGame::ChoosePokerDiscardLocked(int player) const {
+    const auto& hand = poker_.hands[player];
+    if (hand.size() <= 5) return 0;
+    int best_index = 0;
+    std::array<int, 6> best{};
+    bool has = false;
+    for (size_t i = 0; i < hand.size(); ++i) {
+        std::vector<int> remain;
+        for (size_t j = 0; j < hand.size(); ++j) {
+            if (j != i) remain.push_back(hand[j]);
+        }
+        auto eval = BestPokerEvalFromHand(remain);
+        if (!has || eval > best) {
+            best = eval;
+            best_index = static_cast<int>(i);
+            has = true;
+        }
+    }
+    return best_index;
+}
+
+int LocalGame::BestPokerDrawChoiceLocked(int player) const {
+    if (poker_.discards.empty()) return 0;  // 盲抽
+    auto current = BestPokerEvalFromHand(poker_.hands[player]);
+    auto with_discard = poker_.hands[player];
+    with_discard.push_back(poker_.discards.back());
+    auto improved = BestPokerEvalFromHand(with_discard);
+    return improved > current ? 1 : 0;
+}
+
+bool LocalGame::PokerShouldCaboLocked(int player) const {
+    auto eval = BestPokerEvalFromHand(poker_.hands[player]);
+    return eval[0] >= 3;  // 三条及以上就喊 Cabo；让 AI 有明确决策
+}
+
+int LocalGame::PokerHandScoreLocked(int player) const {
+    auto eval = BestPokerEvalFromHand(poker_.hands[player]);
+    return eval[0] * 100 + eval[1];
+}
+
+GameView LocalGame::ViewPokerLocked(int seat) const {
+    GameView view;
+    view.active = active_;
+    view.finished = poker_.round_over;
+    view.type = GameType::kPoker;
+    view.poker = true;
+    view.demo = demo_;
+    view.my_seat = 0;
+    view.current_player = poker_.current;
+    view.wall_remaining = static_cast<int>(poker_.wall.size());
+    view.turn = poker_.round;
+    view.my_turn = poker_.current == 0;
+    view.awaiting_discard = poker_.awaiting_discard;
+    view.can_discard = poker_.current == 0 && poker_.awaiting_discard && !poker_.round_over;
+    view.poker_can_draw = poker_.current == 0 && poker_.awaiting_draw &&
+                          !poker_.round_over && !poker_.match_over && !poker_.wall.empty();
+    view.poker_can_take = poker_.current == 0 && poker_.awaiting_draw &&
+                          !poker_.round_over && !poker_.match_over && !poker_.discards.empty();
+    view.poker_can_cabo = poker_.current == 0 && poker_.awaiting_draw &&
+                          !poker_.round_over && !poker_.match_over && poker_.cabo_by < 0;
+    view.poker_round_over = poker_.round_over;
+    view.poker_match_over = poker_.match_over;
+    view.poker_score_me = poker_.scores[0];
+    view.poker_score_opp = poker_.scores[1];
+    view.poker_round = poker_.round;
+    view.poker_result = poker_.result;
+    view.winner = poker_.winner;
+    view.result = poker_.result;
+    view.current_name = poker_.current == 0 ? "你" : "对手";
+    if (!poker_.discards.empty()) {
+        view.last_discard = TileName(poker_.discards.back(), true);
+        view.last_discard_player = -1;
+    }
+    view.players[0].name = "你";
+    view.players[1].name = "对手";
+    for (int p = 0; p < 2; ++p) {
+        view.players[p].hand_count = static_cast<int>(poker_.hands[p].size());
+        for (int card : poker_.hands[p]) {
+            view.players[p].hand.push_back(TileName(card, true));
+        }
+    }
+    view.my_hand = view.players[0].hand;
+    if (seat >= 0 && seat < 4) {
+        view.my_turn = seat == 0;
+    }
+    return view;
+}
+
+AdviceView LocalGame::AdvicePokerLocked(int seat) const {
+    AdviceView advice;
+    if (poker_.hands[0].empty()) {
+        advice.action = "等待发牌";
+        return advice;
+    }
+    if (poker_.current != 0 && !poker_.round_over) {
+        advice.action = "等待对手";
+        advice.reason = poker_.cabo_by >= 0 ? "Cabo 后的最后一回合" : "对手正在抽牌/弃牌";
+        return advice;
+    }
+    if (poker_.current == 0 && poker_.awaiting_draw && !poker_.round_over) {
+        advice.action = "先摸牌";
+        advice.reason = "摸一张或拿弃牌堆顶，再决定弃哪张；也可以喊 Cabo";
+        return advice;
+    }
+    int index = ChoosePokerDiscardLocked(0);
+    const auto& hand = poker_.hands[0];
+    if (index >= 0 && index < static_cast<int>(hand.size())) {
+        advice.action = "建议打 " + TileName(hand[index], true);
+        advice.reason = "保留牌型潜力更大的 5 张";
+        advice.discard_index = index;
+    }
+    auto eval = BestPokerEvalFromHand(hand);
+    static const char* names[] = {"高牌", "一对", "两对", "三条", "顺子",
+                                  "同花", "葫芦", "四条", "同花顺", "五条"};
+    if (eval[0] >= 0 && eval[0] < 10) {
+        advice.meta = std::string("当前牌型：") + names[eval[0]];
+    }
+    if (poker_.current == 0 && poker_.awaiting_draw && poker_.cabo_by < 0) {
+        advice.reason += "；可考虑喊 Cabo";
+    }
+    return advice;
 }
 
 bool LocalGame::active() const {
@@ -926,6 +1413,47 @@ bool LocalGame::PassClaim(std::string* error) {
     return true;
 }
 
+bool LocalGame::PokerDraw(std::string* error) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (type_ != GameType::kPoker || poker_.current != 0) {
+        if (error) *error = "还没轮到你抽牌。";
+        return false;
+    }
+    return DrawPokerLocked(false, error);
+}
+
+bool LocalGame::PokerTakeDiscard(std::string* error) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (type_ != GameType::kPoker || poker_.current != 0) {
+        if (error) *error = "还没轮到你拿弃牌。";
+        return false;
+    }
+    return DrawPokerLocked(true, error);
+}
+
+bool LocalGame::PokerDiscard(int index, std::string* error) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (type_ != GameType::kPoker || poker_.current != 0) {
+        if (error) *error = "还没轮到你出牌。";
+        return false;
+    }
+    return DiscardPokerLocked(index, error);
+}
+
+bool LocalGame::PokerCabo(std::string* error) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (type_ != GameType::kPoker || poker_.current != 0) {
+        if (error) *error = "还没轮到你喊 Cabo。";
+        return false;
+    }
+    return CaboPokerLocked(error);
+}
+
+bool LocalGame::PokerNextRound(std::string* error) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return NextPokerRoundLocked(error);
+}
+
 
 bool LocalGame::SetHand(int player, const std::string& raw, std::string* error) {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -1190,6 +1718,9 @@ void LocalGame::BuildMeldsLocked(int player, PlayerView* out) const {
 }
 
 GameView LocalGame::ViewLocked(int seat) const {
+    if (type_ == GameType::kPoker && active_) {
+        return ViewPokerLocked(seat);
+    }
     GameView view;
     view.active = active_;
     view.finished = finished_;
@@ -1250,6 +1781,9 @@ AdviceView LocalGame::AdviceFor(int seat) const {
 }
 
 AdviceView LocalGame::AdviceLocked(int seat) const {
+    if (type_ == GameType::kPoker && active_) {
+        return AdvicePokerLocked(seat);
+    }
     AdviceView advice;
     if (!active_) {
         advice.action = "尚未开始牌局";
@@ -1361,6 +1895,22 @@ std::string LocalGame::StateTextFor(int seat) const {
 std::string LocalGame::StateTextLocked(int seat) const {
     if (!active_) {
         return "当前没有进行中的牌局。点击“开始牌局”或“生成演示牌局”即可开局。";
+    }
+    if (type_ == GameType::kPoker) {
+        std::string text = "这是离线扑克 Cabo 牌局，第 " + std::to_string(poker_.round) +
+                           " 轮，你 " + std::to_string(poker_.scores[0]) + " 分，对手 " +
+                           std::to_string(poker_.scores[1]) + " 分。当前轮到" +
+                           (poker_.current == 0 ? "你" : "对手") + "。";
+        if (poker_.round_over) {
+            text += "本轮结束：" + poker_.result + "。";
+        } else {
+            text += poker_.awaiting_discard ? "请弃一张牌。" : "请摸牌或拿弃牌堆顶。";
+        }
+        text += "你的手牌是：" + Join(poker_.hands[0], 8, true) + "。";
+        if (!poker_.discards.empty()) {
+            text += "弃牌堆顶是：" + TileName(poker_.discards.back(), true) + "。";
+        }
+        return text;
     }
     std::string text = "这是离线" + std::string(TypeName(type_)) + "牌局，你坐在" +
                        SeatName(seat) + "。当前轮到" + SeatName(current_player_) +
