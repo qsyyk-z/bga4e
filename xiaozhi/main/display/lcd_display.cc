@@ -168,6 +168,9 @@ RgbLcdDisplay::RgbLcdDisplay(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_h
     lvgl_port_cfg_t port_cfg = ESP_LVGL_PORT_INIT_CONFIG();
     port_cfg.task_priority = 1;
     port_cfg.timer_period_ms = 50;
+    // The four-player/poker game screen builds nested flex objects and evaluates
+    // poker hands from touch callbacks; the default 7 KiB LVGL stack overflowed.
+    port_cfg.task_stack = 12288;
     lvgl_port_init(&port_cfg);
 
     ESP_LOGI(TAG, "Adding LCD display");
