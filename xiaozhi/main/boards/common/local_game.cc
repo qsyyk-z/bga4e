@@ -952,8 +952,9 @@ void LocalGame::FinishPokerRoundLocked(bool cabo) {
             poker_.scores[winner] += 2;
             result = (winner == 0 ? "你" : "对手") + std::string(" Cabo 成功，+2");
         } else {
-            poker_.scores[1 - winner] += 2;
-            result = (winner == 0 ? "你" : "对手") + std::string(" Cabo 失败，对方 +2");
+            poker_.scores[1 - caller] += 2;
+            result = (caller == 0 ? "你" : "对手") + std::string(" Cabo 失败，") +
+                     (winner == 0 ? "你" : "对手") + " +2";
         }
     } else {
         poker_.scores[winner] += 1;
